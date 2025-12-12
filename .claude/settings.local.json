@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(gh auth status:*)",
+      "Bash(git commit:*)",
+      "Bash(git remote add:*)",
+      "Bash(git push:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\nfeat: 完成 TRPG 核心系統文件與序章腳本\n\n新增文件：\n- 08-equipment.md: 武器裝備清單（含重量系統）\n- 09-status-effects.md: 異常狀態定義\n- 10-economy.md: 經濟系統與商人物價表\n- 11-npcs.md: NPC 資料庫\n- 12-puzzles.md: 謎題庫\n- chapters/00-prologue.md: 序章完整腳本\n\n更新文件：\n- 04-alchemy-system.md: 補完章節獎勵配方材料與難度\n- README.md: 更新文件索引\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n)\")"
+    ]
+  }
+}

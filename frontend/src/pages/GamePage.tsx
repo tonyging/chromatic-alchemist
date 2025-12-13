@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import Typewriter from '../components/Typewriter';
 import CombatPanel from '../components/CombatPanel';
+import ConfirmDialog from '../components/ConfirmDialog';
 
 export default function GamePage() {
   const { gameState, narrative, availableActions, sendAction, exitGame, isLoading, currentSlot, sceneType, combatInfo } = useGame();
@@ -10,6 +11,7 @@ export default function GamePage() {
   const [isReading, setIsReading] = useState(false);
   const [pendingNarrative, setPendingNarrative] = useState<string[]>([]);
   const lastNarrativeLength = useRef(0);
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
 
   // Redirect if no active game
   useEffect(() => {
@@ -34,10 +36,13 @@ export default function GamePage() {
   };
 
   const handleExit = () => {
-    if (confirm('確定要離開遊戲嗎？進度已自動儲存。')) {
-      exitGame();
-      navigate('/');
-    }
+    setShowExitConfirm(true);
+  };
+
+  const confirmExit = () => {
+    setShowExitConfirm(false);
+    exitGame();
+    navigate('/');
   };
 
   const handleAction = async (action: { id: string; type: string; label: string; data?: Record<string, unknown> }) => {
@@ -216,6 +221,18 @@ export default function GamePage() {
           )}
         </div>
       </aside>
+
+      {/* Exit Confirm Dialog */}
+      <ConfirmDialog
+        isOpen={showExitConfirm}
+        title="離開遊戲"
+        message="確定要離開遊戲嗎？進度已自動儲存。"
+        confirmText="離開"
+        cancelText="取消"
+        onConfirm={confirmExit}
+        onCancel={() => setShowExitConfirm(false)}
+        variant="warning"
+      />
     </div>
   );
 }

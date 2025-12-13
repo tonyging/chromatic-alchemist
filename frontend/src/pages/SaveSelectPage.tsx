@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useGame } from '../contexts/GameContext';
 import { formatDateTime } from '../utils/format';
+import ConfirmDialog from '../components/ConfirmDialog';
 
 const CHAPTER_NAMES: Record<string, string> = {
   prologue: '序章',
@@ -23,6 +24,7 @@ export default function SaveSelectPage() {
 
   const [selectedSlot, setSelectedSlot] = useState<number | null>(null);
   const [selectedIsEmpty, setSelectedIsEmpty] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   useEffect(() => {
     loadSaves();
@@ -44,13 +46,17 @@ export default function SaveSelectPage() {
     navigate('/game');
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (!selectedSlot) return;
-    if (confirm('確定要刪除這個存檔嗎？')) {
-      await deleteGame(selectedSlot);
-      setSelectedSlot(null);
-      setSelectedIsEmpty(false);
-    }
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!selectedSlot) return;
+    setShowDeleteConfirm(false);
+    await deleteGame(selectedSlot);
+    setSelectedSlot(null);
+    setSelectedIsEmpty(false);
   };
 
   return (
@@ -154,6 +160,18 @@ export default function SaveSelectPage() {
           </div>
         )}
       </div>
+
+      {/* Delete Confirm Dialog */}
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        title="刪除存檔"
+        message="確定要刪除這個存檔嗎？此操作無法復原。"
+        confirmText="刪除"
+        cancelText="取消"
+        onConfirm={confirmDelete}
+        onCancel={() => setShowDeleteConfirm(false)}
+        variant="danger"
+      />
     </div>
   );
 }

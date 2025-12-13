@@ -79,6 +79,24 @@ class SaveSlotInfo(BaseModel):
     is_empty: bool
 
 
+class CustomStats(BaseModel):
+    strength: int
+    dexterity: int
+    intelligence: int
+    perception: int
+
+    def validate_stats(self) -> bool:
+        """Validate total points = 9 and each stat is 1-5"""
+        total = self.strength + self.dexterity + self.intelligence + self.perception
+        if total != 9:
+            return False
+        for val in [self.strength, self.dexterity, self.intelligence, self.perception]:
+            if val < 1 or val > 5:
+                return False
+        return True
+
+
 class NewGameRequest(BaseModel):
     character_name: str
     background: Background
+    stats: Optional[CustomStats] = None  # If None, use default 2/2/2/2 + background bonus

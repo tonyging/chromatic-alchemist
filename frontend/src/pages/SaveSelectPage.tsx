@@ -3,13 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useGame } from '../contexts/GameContext';
 import { formatDateTime } from '../utils/format';
-import type { Background } from '../types';
-
-const BACKGROUNDS: { value: Background; label: string; desc: string }[] = [
-  { value: 'warrior', label: '戰士', desc: '力量 +1' },
-  { value: 'herbalist', label: '藥草師', desc: '感知 +1' },
-  { value: 'mage', label: '法師學徒', desc: '智力 +1' },
-];
 
 const CHAPTER_NAMES: Record<string, string> = {
   prologue: '序章',
@@ -25,13 +18,11 @@ function getChapterName(chapter: string | null | undefined): string {
 
 export default function SaveSelectPage() {
   const { user, logout } = useAuth();
-  const { saves, loadSaves, startNewGame, loadGame, deleteGame, isLoading, error } = useGame();
+  const { saves, loadSaves, loadGame, deleteGame, isLoading, error } = useGame();
   const navigate = useNavigate();
 
   const [selectedSlot, setSelectedSlot] = useState<number | null>(null);
-  const [showNewGame, setShowNewGame] = useState(false);
-  const [characterName, setCharacterName] = useState('');
-  const [background, setBackground] = useState<Background>('warrior');
+  const [selectedIsEmpty, setSelectedIsEmpty] = useState(false);
 
   useEffect(() => {
     loadSaves();
@@ -39,17 +30,12 @@ export default function SaveSelectPage() {
 
   const handleSlotClick = (slot: number, isEmpty: boolean) => {
     setSelectedSlot(slot);
-    if (isEmpty) {
-      setShowNewGame(true);
-    } else {
-      setShowNewGame(false);
-    }
+    setSelectedIsEmpty(isEmpty);
   };
 
-  const handleStartNew = async () => {
-    if (!selectedSlot || !characterName.trim()) return;
-    await startNewGame(selectedSlot, characterName.trim(), background);
-    navigate('/game');
+  const handleNewGame = () => {
+    if (!selectedSlot) return;
+    navigate('/create', { state: { slot: selectedSlot } });
   };
 
   const handleLoad = async () => {
@@ -63,7 +49,7 @@ export default function SaveSelectPage() {
     if (confirm('確定要刪除這個存檔嗎？')) {
       await deleteGame(selectedSlot);
       setSelectedSlot(null);
-      setShowNewGame(false);
+      setSelectedIsEmpty(false);
     }
   };
 
@@ -129,64 +115,17 @@ export default function SaveSelectPage() {
         {/* Actions */}
         {selectedSlot !== null && (
           <div className="bg-gray-800 rounded-lg p-6">
-            {showNewGame ? (
-              /* New Game Form */
-              <div className="space-y-4">
-                <h2 className="text-xl font-semibold text-amber-400 mb-4">
-                  建立新角色
-                </h2>
-
-                <div>
-                  <label className="block text-gray-400 text-sm mb-1">
-                    角色名稱
-                  </label>
-                  <input
-                    type="text"
-                    value={characterName}
-                    onChange={(e) => setCharacterName(e.target.value)}
-                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded
-                               text-white focus:outline-none focus:border-amber-500"
-                    placeholder="輸入角色名稱"
-                    maxLength={20}
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-gray-400 text-sm mb-2">
-                    選擇背景
-                  </label>
-                  <div className="grid gap-2">
-                    {BACKGROUNDS.map((bg) => (
-                      <button
-                        key={bg.value}
-                        onClick={() => setBackground(bg.value)}
-                        className={`p-3 rounded border text-left transition-colors ${
-                          background === bg.value
-                            ? 'border-amber-500 bg-amber-900/30'
-                            : 'border-gray-600 hover:border-gray-500'
-                        }`}
-                      >
-                        <span className="font-semibold">{bg.label}</span>
-                        <span className="text-gray-400 ml-2 text-sm">
-                          {bg.desc}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <button
-                  onClick={handleStartNew}
-                  disabled={isLoading || !characterName.trim()}
-                  className="w-full py-3 bg-amber-600 hover:bg-amber-500
-                             disabled:bg-gray-600 disabled:cursor-not-allowed
-                             text-white font-semibold rounded transition-colors"
-                >
-                  {isLoading ? '建立中...' : '開始冒險'}
-                </button>
-              </div>
+            {selectedIsEmpty ? (
+              /* Empty slot - New Game only */
+              <button
+                onClick={handleNewGame}
+                className="w-full py-3 bg-amber-600 hover:bg-amber-500
+                           text-white font-semibold rounded transition-colors"
+              >
+                建立新角色
+              </button>
             ) : (
-              /* Load/Delete Options */
+              /* Existing save - Load/Delete/Overwrite */
               <div className="space-y-4">
                 <button
                   onClick={handleLoad}
@@ -205,9 +144,7 @@ export default function SaveSelectPage() {
                   刪除存檔
                 </button>
                 <button
-                  onClick={() => {
-                    setShowNewGame(true);
-                  }}
+                  onClick={handleNewGame}
                   className="w-full py-2 text-gray-400 hover:text-white"
                 >
                   覆蓋為新遊戲

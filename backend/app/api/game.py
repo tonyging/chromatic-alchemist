@@ -80,10 +80,21 @@ async def create_new_game(
     if existing_save:
         raise HTTPException(status_code=400, detail="Slot already in use. Delete first.")
 
-    # Calculate base stats based on background
-    base_stats = {"strength": 2, "dexterity": 2, "intelligence": 2, "perception": 2}
-    starting_items: list[dict] = []
+    # Calculate stats: use custom stats if provided, else default
+    if request.stats:
+        if not request.stats.validate_stats():
+            raise HTTPException(status_code=400, detail="Stats must total 9 points with each stat between 1-5")
+        base_stats = {
+            "strength": request.stats.strength,
+            "dexterity": request.stats.dexterity,
+            "intelligence": request.stats.intelligence,
+            "perception": request.stats.perception,
+        }
+    else:
+        base_stats = {"strength": 2, "dexterity": 2, "intelligence": 2, "perception": 2}
 
+    # Apply background bonus
+    starting_items: list[dict] = []
     if request.background.value == "warrior":
         base_stats["strength"] += 1
         starting_items = [{"id": "red_potion", "name": "紅光藥水", "quantity": 2}]

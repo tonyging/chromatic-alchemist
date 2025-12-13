@@ -5,6 +5,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import SaveSelectPage from './pages/SaveSelectPage';
+import CharacterCreatePage from './pages/CharacterCreatePage';
 import GamePage from './pages/GamePage';
 
 export default function App() {
@@ -20,6 +21,22 @@ export default function App() {
               element={
                 <ProtectedRoute>
                   <SaveSelectPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/saves"
+              element={
+                <ProtectedRoute>
+                  <SaveSelectPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/create"
+              element={
+                <ProtectedRoute>
+                  <CharacterCreatePage />
                 </ProtectedRoute>
               }
             />

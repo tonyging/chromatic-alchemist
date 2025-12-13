@@ -11,7 +11,8 @@ import type {
   ActionResponse,
   Background,
   SceneType,
-  CombatInfo
+  CombatInfo,
+  Stats
 } from '../types';
 import { gameApi } from '../services/api';
 
@@ -44,7 +45,7 @@ type GameAction =
 // Context 型別
 interface GameContextType extends GameUIState {
   loadSaves: () => Promise<void>;
-  startNewGame: (slot: number, name: string, bg: Background) => Promise<void>;
+  startNewGame: (slot: number, name: string, bg: Background, stats?: Stats) => Promise<void>;
   loadGame: (slot: number) => Promise<void>;
   deleteGame: (slot: number) => Promise<void>;
   sendAction: (action: ActionRequest) => Promise<ActionResponse>;
@@ -150,11 +151,12 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const startNewGame = async (
     slot: number,
     name: string,
-    background: Background
+    background: Background,
+    stats?: Stats
   ) => {
     dispatch({ type: 'SET_LOADING', payload: true });
     try {
-      const response = await gameApi.createNew(slot, name, background);
+      const response = await gameApi.createNew(slot, name, background, stats);
       dispatch({
         type: 'START_NEW_GAME',
         payload: {

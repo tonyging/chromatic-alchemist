@@ -4,10 +4,10 @@ import type {
   LoginForm,
   User,
   SaveSlot,
-  GameState,
   ActionRequest,
   ActionResponse,
-  Background
+  Background,
+  Stats
 } from '../types';
 
 const api = axios.create({
@@ -69,11 +69,13 @@ export const gameApi = {
   createNew: async (
     slot: number,
     characterName: string,
-    background: Background
+    background: Background,
+    stats?: Stats
   ): Promise<ActionResponse> => {
     const { data } = await api.post<ActionResponse>(`/game/saves/${slot}/new`, {
       character_name: characterName,
       background,
+      stats,
     });
     return data;
   },

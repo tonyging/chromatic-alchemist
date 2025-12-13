@@ -123,12 +123,13 @@ export default function CharacterCreatePage() {
 
           {/* Stat Allocation */}
           <div className="bg-gray-800 rounded-lg p-6">
-            <div className="flex justify-between items-center mb-4">
+            <div className="flex justify-between items-center mb-2">
               <label className="text-gray-400 text-sm">分配屬性點數</label>
               <span className={`font-bold ${remainingPoints === 0 ? 'text-green-400' : 'text-amber-400'}`}>
                 剩餘點數: {remainingPoints}
               </span>
             </div>
+            <p className="text-gray-500 text-xs mb-4">每項屬性最低 1，最高 5</p>
 
             <div className="space-y-4">
               {STAT_INFO.map(({ key, label, desc }) => (

@@ -34,8 +34,8 @@ type GameAction =
   | { type: 'SET_LOADING'; payload: boolean }
   | { type: 'SET_ERROR'; payload: string | null }
   | { type: 'SET_SAVES'; payload: SaveSlot[] }
-  | { type: 'SET_GAME'; payload: { slot: number; narrative: string[]; actions: GameUIState['availableActions']; sceneType?: SceneType | null; combatInfo?: CombatInfo | null } }
-  | { type: 'START_NEW_GAME'; payload: { slot: number; narrative: string[]; actions: GameUIState['availableActions']; sceneType?: SceneType | null; combatInfo?: CombatInfo | null } }
+  | { type: 'SET_GAME'; payload: { slot: number; narrative: string[]; actions: GameUIState['availableActions']; gameState?: GameState | null; sceneType?: SceneType | null; combatInfo?: CombatInfo | null } }
+  | { type: 'START_NEW_GAME'; payload: { slot: number; narrative: string[]; actions: GameUIState['availableActions']; gameState?: GameState | null; sceneType?: SceneType | null; combatInfo?: CombatInfo | null } }
   | { type: 'CLEAR_GAME' }
   | { type: 'APPEND_NARRATIVE'; payload: string[] }
   | { type: 'SET_ACTIONS'; payload: GameUIState['availableActions'] }
@@ -67,7 +67,7 @@ function gameReducer(state: GameUIState, action: GameAction): GameUIState {
       return {
         ...state,
         currentSlot: action.payload.slot,
-        gameState: null,
+        gameState: action.payload.gameState ?? null,
         narrative: action.payload.narrative,
         availableActions: action.payload.actions,
         sceneType: action.payload.sceneType ?? null,
@@ -79,7 +79,7 @@ function gameReducer(state: GameUIState, action: GameAction): GameUIState {
       return {
         ...state,
         currentSlot: action.payload.slot,
-        gameState: null,
+        gameState: action.payload.gameState ?? null,
         narrative: action.payload.narrative,
         availableActions: action.payload.actions,
         sceneType: action.payload.sceneType ?? null,
@@ -163,6 +163,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
           slot,
           narrative: response.narrative,
           actions: response.available_actions as GameUIState['availableActions'],
+          gameState: response.game_state,
           sceneType: response.scene_type,
           combatInfo: response.combat_info,
         }
@@ -182,6 +183,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
           slot,
           narrative: response.narrative,
           actions: response.available_actions as GameUIState['availableActions'],
+          gameState: response.game_state,
           sceneType: response.scene_type,
           combatInfo: response.combat_info,
         }

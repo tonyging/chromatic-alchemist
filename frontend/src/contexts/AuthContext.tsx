@@ -85,18 +85,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (form: LoginForm) => {
     dispatch({ type: 'AUTH_START' });
-    const { accessToken } = await authApi.login(form);
-    localStorage.setItem('token', accessToken);
-    const user = await authApi.getMe();
-    dispatch({ type: 'AUTH_SUCCESS', payload: user });
+    try {
+      const { access_token } = await authApi.login(form);
+      localStorage.setItem('token', access_token);
+      const user = await authApi.getMe();
+      dispatch({ type: 'AUTH_SUCCESS', payload: user });
+    } catch (error) {
+      dispatch({ type: 'AUTH_FAILURE' });
+      throw error;
+    }
   };
 
   const register = async (form: LoginForm) => {
     dispatch({ type: 'AUTH_START' });
-    const { accessToken } = await authApi.register(form);
-    localStorage.setItem('token', accessToken);
-    const user = await authApi.getMe();
-    dispatch({ type: 'AUTH_SUCCESS', payload: user });
+    try {
+      const { access_token } = await authApi.register(form);
+      localStorage.setItem('token', access_token);
+      const user = await authApi.getMe();
+      dispatch({ type: 'AUTH_SUCCESS', payload: user });
+    } catch (error) {
+      dispatch({ type: 'AUTH_FAILURE' });
+      throw error;
+    }
   };
 
   const logout = () => {

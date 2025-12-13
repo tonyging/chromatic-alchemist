@@ -163,17 +163,25 @@ game/
 
 ## 編碼規範
 
+### API 欄位命名
+- **統一使用 snake_case**（前後端皆同）
+- 後端 Pydantic schema 使用 snake_case
+- 前端 TypeScript interface 也使用 snake_case
+- 範例：`access_token`, `character_name`, `game_state`, `created_at`
+
 ### TypeScript（前端）
 - 嚴格模式 (strict: true)
 - 禁止 any，必須明確型別
 - 元件使用 .tsx，純邏輯使用 .ts
 - 使用 interface 定義 props
+- API 相關型別使用 snake_case 以匹配後端
 
 ### Python（後端）
 - Type hints 必須
 - 使用 Pydantic 驗證所有輸入
 - 遵循 PEP 8
 - 使用 async/await
+- 欄位命名使用 snake_case
 
 ---
 

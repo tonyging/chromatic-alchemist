@@ -26,11 +26,14 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// 回應攔截器：處理 401
+// 回應攔截器：處理 401（排除登入/註冊 API）
 api.interceptors.response.use(
   (response) => response,
   (error: AxiosError) => {
-    if (error.response?.status === 401) {
+    const url = error.config?.url || '';
+    const isAuthEndpoint = url.includes('/auth/login') || url.includes('/auth/register');
+
+    if (error.response?.status === 401 && !isAuthEndpoint) {
       localStorage.removeItem('token');
       window.location.href = '/login';
     }
@@ -67,16 +70,16 @@ export const gameApi = {
     slot: number,
     characterName: string,
     background: Background
-  ): Promise<GameState> => {
-    const { data } = await api.post<GameState>(`/game/saves/${slot}/new`, {
+  ): Promise<ActionResponse> => {
+    const { data } = await api.post<ActionResponse>(`/game/saves/${slot}/new`, {
       character_name: characterName,
       background,
     });
     return data;
   },
 
-  loadSave: async (slot: number): Promise<GameState> => {
-    const { data } = await api.get<GameState>(`/game/saves/${slot}`);
+  loadSave: async (slot: number): Promise<ActionResponse> => {
+    const { data } = await api.get<ActionResponse>(`/game/saves/${slot}`);
     return data;
   },
 

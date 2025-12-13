@@ -1,0 +1,595 @@
+{
+  "id": "prologue",
+  "title": "序章：廢棄燈塔",
+  "scenes": {
+    "dream_opening": {
+      "id": "dream_opening",
+      "narrative": [
+        "黑暗。",
+        "",
+        "你聽見師父的聲音，彷彿從很遠的地方傳來。",
+        "",
+        "「記住，孩子...光與暗從不對立...」",
+        "",
+        "聲音漸漸模糊。",
+        "",
+        "「三稜聖杯...碎片...你必須...」",
+        "",
+        "你猛然醒來。",
+        "",
+        "冷汗浸濕了後背。窗外，殘月如鉤。",
+        "桌上，師父的最後一封信靜靜躺著。",
+        "信封上只有一行字：「廢棄燈塔，答案在那裡。」"
+      ],
+      "actions": [
+        {
+          "id": "read_letter",
+          "type": "choice",
+          "label": "讀信",
+          "data": {"choice_id": "read_letter"}
+        }
+      ],
+      "choices": {
+        "read_letter": {
+          "narrative": [
+            "親愛的學徒：",
+            "",
+            "當你讀到這封信時，我已經不在了。",
+            "五百年前的光裂之災，聖杯碎成七片。",
+            "我花了一輩子尋找，只找到了線索。",
+            "",
+            "去廢棄燈塔，那是折光師的起源之地。",
+            "稜光瓶在那裡等著你。",
+            "",
+            "記住我教你的一切。",
+            "你是最後的折光師學徒。",
+            "世界的命運，交給你了。",
+            "",
+            "願光明指引你的道路。",
+            "——艾爾文"
+          ],
+          "next_scene": "prepare_departure"
+        }
+      }
+    },
+    "prepare_departure": {
+      "id": "prepare_departure",
+      "narrative": [
+        "你收起信，整理好行囊。",
+        "天亮之前，你必須出發。",
+        "",
+        "經過一天的跋涉，你終於來到了廢棄燈塔。"
+      ],
+      "actions": [
+        {
+          "id": "continue_to_lighthouse",
+          "type": "continue",
+          "label": "前往燈塔",
+          "data": {"next_scene": "lighthouse_exterior"}
+        }
+      ]
+    },
+    "lighthouse_exterior": {
+      "id": "lighthouse_exterior",
+      "narrative": [
+        "這座燈塔矗立在海岬盡頭，早已被世人遺忘。",
+        "石牆爬滿了藤蔓，窗戶破碎，海風從裂縫中呼嘯而過。",
+        "但奇怪的是，塔頂似乎還有微弱的光芒閃爍。",
+        "",
+        "燈塔大門半開，黑暗在門後等待。"
+      ],
+      "actions": [
+        {
+          "id": "enter_directly",
+          "type": "choice",
+          "label": "直接進入燈塔",
+          "data": {"choice_id": "enter_directly"}
+        },
+        {
+          "id": "observe_surroundings",
+          "type": "choice",
+          "label": "觀察周圍環境",
+          "data": {"choice_id": "observe_surroundings"}
+        },
+        {
+          "id": "check_trap",
+          "type": "choice",
+          "label": "檢查門上是否有陷阱",
+          "data": {"choice_id": "check_trap"}
+        }
+      ],
+      "choices": {
+        "enter_directly": {
+          "narrative": [
+            "你推開半掩的大門，踏入燈塔內部。"
+          ],
+          "next_scene": "lighthouse_interior"
+        },
+        "observe_surroundings": {
+          "skill_check": {
+            "attribute": "perception",
+            "difficulty": "easy"
+          },
+          "success_text": [
+            "你仔細觀察四周。",
+            "燈塔旁有一個被藤蔓覆蓋的小棚子。",
+            "你撥開藤蔓，發現裡面有一塊閃爍著淡紅光芒的石頭。",
+            "",
+            "獲得：紅稜石 ×1"
+          ],
+          "failure_text": [
+            "周圍看起來很普通，只有岩石和海浪。",
+            "你決定不再浪費時間。"
+          ],
+          "state_changes": {
+            "add_item": {"id": "red_prism_stone", "quantity": 1}
+          },
+          "next_actions": [
+            {
+              "id": "enter_lighthouse",
+              "type": "continue",
+              "label": "進入燈塔",
+              "data": {"next_scene": "lighthouse_interior"}
+            }
+          ]
+        },
+        "check_trap": {
+          "skill_check": {
+            "attribute": "perception",
+            "difficulty": "normal"
+          },
+          "success_text": [
+            "你仔細檢查大門。",
+            "門上沒有陷阱，但你注意到門框上有褪色的符文。",
+            "這是折光師的標記——你認得這個圖案。",
+            "師父的工作室裡也有同樣的符文。"
+          ],
+          "failure_text": [
+            "門看起來只是一扇普通的老舊木門。",
+            "你沒有發現任何異常。"
+          ],
+          "next_actions": [
+            {
+              "id": "enter_lighthouse",
+              "type": "continue",
+              "label": "進入燈塔",
+              "data": {"next_scene": "lighthouse_interior"}
+            }
+          ]
+        }
+      }
+    },
+    "lighthouse_interior": {
+      "id": "lighthouse_interior",
+      "narrative": [
+        "燈塔內部比想像中更加破敗。",
+        "",
+        "灰塵覆蓋一切，蜘蛛網從天花板垂下。",
+        "牆上掛著褪色的畫——一位年輕的折光師，手持閃耀的聖杯。",
+        "中央有一張石桌，上面放著三本舊書和一個空的玻璃瓶。",
+        "",
+        "螺旋樓梯通往上層，但入口被倒塌的石塊堵住了。",
+        "",
+        "突然，你聽到角落傳來窸窣聲。"
+      ],
+      "actions": [
+        {
+          "id": "draw_weapon",
+          "type": "choice",
+          "label": "拔出武器，準備戰鬥",
+          "data": {"choice_id": "draw_weapon"}
+        },
+        {
+          "id": "call_out",
+          "type": "choice",
+          "label": "大喊「誰在那裡？」",
+          "data": {"choice_id": "call_out"}
+        },
+        {
+          "id": "check_table",
+          "type": "choice",
+          "label": "先檢查石桌上的物品",
+          "data": {"choice_id": "check_table"}
+        }
+      ],
+      "choices": {
+        "draw_weapon": {
+          "narrative": [
+            "你迅速拔出武器，擺出戰鬥姿態。",
+            "",
+            "一隻暗影蟲從角落竄出！",
+            "這是被暗影能量污染的生物，體型如貓，全身漆黑。"
+          ],
+          "next_scene": "tutorial_combat"
+        },
+        "call_out": {
+          "narrative": [
+            "「誰在那裡？」你的聲音在空曠的燈塔中迴響。",
+            "",
+            "回應你的是一聲尖銳的嘶叫。",
+            "一隻暗影蟲從角落竄出！"
+          ],
+          "next_scene": "tutorial_combat"
+        },
+        "check_table": {
+          "narrative": [
+            "你快速檢查石桌上的物品。",
+            "",
+            "三本書分別是《折光術入門》《藥水調配基礎》《光譜原理》。",
+            "玻璃瓶上刻著『稜光瓶』三個字，但瓶內空無一物。",
+            "",
+            "就在這時，角落傳來劇烈的響動。",
+            "一隻暗影蟲從陰影中撲向你！"
+          ],
+          "state_changes": {
+            "flags": {"checked_table": true}
+          },
+          "next_scene": "tutorial_combat"
+        }
+      }
+    },
+    "tutorial_combat": {
+      "id": "tutorial_combat",
+      "type": "combat",
+      "narrative": [
+        "暗影蟲向你發起攻擊！",
+        "這是被暗影能量污染的生物，體型如貓，全身漆黑。"
+      ],
+      "combat_info": {
+        "enemy_name": "暗影蟲",
+        "enemy_hp": 15,
+        "enemy_max_hp": 15,
+        "enemy_evasion": 20,
+        "enemy_attack": "暗影撕咬（4 傷害）",
+        "enemy_weakness": "任何光系攻擊傷害 +2",
+        "tutorial_text": "這是你的第一場戰鬥。準備好了嗎？"
+      },
+      "actions": [
+        {
+          "id": "attack_melee",
+          "type": "attack",
+          "label": "近戰攻擊",
+          "data": {"attack_type": "melee", "enemy_id": "shadow_bug"}
+        },
+        {
+          "id": "use_item_combat",
+          "type": "use_item",
+          "label": "使用物品",
+          "data": {}
+        }
+      ]
+    },
+    "post_combat": {
+      "id": "post_combat",
+      "narrative": [
+        "暗影蟲發出淒厲的叫聲，化為一縷黑煙消散。",
+        "地上留下了一小堆暗色結晶。",
+        "",
+        "獲得：暗影碎片 ×1",
+        "",
+        "戰鬥結束後，你檢視了一下自己的狀態。",
+        "還好，只是些皮肉傷。"
+      ],
+      "actions": [
+        {
+          "id": "clear_stairs",
+          "type": "continue",
+          "label": "清理樓梯障礙",
+          "data": {"next_scene": "clear_obstacle"}
+        }
+      ]
+    },
+    "clear_obstacle": {
+      "id": "clear_obstacle",
+      "narrative": [
+        "樓梯入口被石塊堵住了。",
+        "你需要找個方法清除障礙。"
+      ],
+      "actions": [
+        {
+          "id": "push_stones",
+          "type": "choice",
+          "label": "嘗試搬開石塊（力量檢定）",
+          "data": {"choice_id": "push_stones"}
+        },
+        {
+          "id": "find_passage",
+          "type": "choice",
+          "label": "尋找其他通道（感知檢定）",
+          "data": {"choice_id": "find_passage"}
+        }
+      ],
+      "choices": {
+        "push_stones": {
+          "skill_check": {
+            "attribute": "strength",
+            "difficulty": "normal"
+          },
+          "success_text": [
+            "你用力推開石塊，碎石滾落一旁。",
+            "通往上層的樓梯終於露了出來。"
+          ],
+          "failure_text": [
+            "石塊紋絲不動。",
+            "你需要想其他辦法，或者再試一次。"
+          ],
+          "next_scene": "lighthouse_top"
+        },
+        "find_passage": {
+          "skill_check": {
+            "attribute": "perception",
+            "difficulty": "hard"
+          },
+          "success_text": [
+            "你仔細觀察牆壁，發現有一塊磚鬆動了。",
+            "推開後，露出一個狹窄的側通道。",
+            "雖然要側身才能通過，但總算找到上去的路了。"
+          ],
+          "failure_text": [
+            "周圍看起來沒有其他路。",
+            "只能試著搬開石塊了。"
+          ],
+          "next_scene": "lighthouse_top"
+        }
+      }
+    },
+    "lighthouse_top": {
+      "id": "lighthouse_top",
+      "narrative": [
+        "你來到燈塔頂層。",
+        "",
+        "這裡曾是折光師的工作室。",
+        "儘管塵封多年，光學儀器仍閃爍著微弱的光芒。",
+        "",
+        "房間中央有三面鏡子，分別刻著紅、綠、藍的符文。",
+        "對面牆上有一道被光芒封印的門，門上的符文緩緩流動。",
+        "",
+        "門前站著一個淡金色的人形光影——燈塔的守護靈。",
+        "",
+        "守護靈開口說話，聲音如風鈴般清脆：",
+        "",
+        "「年輕的折光師...你終於來了。」",
+        "「艾爾文說你會來的。」",
+        "「要打開這扇門，你必須讓三色之光合一。」"
+      ],
+      "actions": [
+        {
+          "id": "solve_puzzle",
+          "type": "choice",
+          "label": "調整鏡子（三色合一謎題）",
+          "data": {"choice_id": "solve_puzzle"}
+        },
+        {
+          "id": "ask_hint",
+          "type": "choice",
+          "label": "請求守護靈提示",
+          "data": {"choice_id": "ask_hint"}
+        },
+        {
+          "id": "force_door",
+          "type": "choice",
+          "label": "嘗試強行破門",
+          "data": {"choice_id": "force_door"}
+        }
+      ],
+      "choices": {
+        "solve_puzzle": {
+          "narrative": [
+            "你仔細觀察三面鏡子。",
+            "每面鏡子都可以旋轉，調整光線方向。",
+            "",
+            "門上有一個圓形標記。",
+            "你意識到——需要讓三道光線同時照射到那個標記上。",
+            "",
+            "紅 + 綠 + 藍 = 白光。",
+            "",
+            "你依次調整三面鏡子，讓光線匯聚...",
+            "",
+            "三道光線在門上的標記處交匯！",
+            "紅、綠、藍混合成耀眼的白光。",
+            "",
+            "封印解除。門緩緩打開。",
+            "",
+            "守護靈微笑：「很好。你有成為折光師的資質。」"
+          ],
+          "next_scene": "obtain_prism_bottle"
+        },
+        "ask_hint": {
+          "skill_check": {
+            "attribute": "intelligence",
+            "difficulty": "normal"
+          },
+          "success_text": [
+            "守護靈若有所思地看著你。",
+            "",
+            "「年輕人，答案就在眼前。」",
+            "「每面鏡子發出的光都是單色的。」",
+            "「門上的標記是白色的。」",
+            "「紅 + 綠 + 藍 = ?」",
+            "",
+            "你恍然大悟——讓所有光線匯聚到同一點！"
+          ],
+          "failure_text": [
+            "守護靈搖了搖頭。",
+            "「這個謎題，需要你自己思考。」",
+            "「觀察光的顏色，思考它們的關係。」"
+          ],
+          "next_actions": [
+            {
+              "id": "solve_after_hint",
+              "type": "continue",
+              "label": "調整鏡子",
+              "data": {"next_scene": "obtain_prism_bottle"}
+            }
+          ]
+        },
+        "force_door": {
+          "skill_check": {
+            "attribute": "strength",
+            "difficulty": "hard"
+          },
+          "success_text": [
+            "你用武器猛力砸向封印之門。",
+            "門碎裂的瞬間，一股能量反噬！",
+            "",
+            "你受到 5 點傷害。",
+            "",
+            "守護靈嘆息：「年輕人，有時候用腦比用力更重要。」",
+            "",
+            "不過，門終究是開了。"
+          ],
+          "failure_text": [
+            "你用盡全力攻擊封印之門。",
+            "然而門紋絲不動，封印反彈了你的力量！",
+            "",
+            "你受到 3 點傷害。",
+            "",
+            "守護靈搖頭：「武力無法解決這個問題。」"
+          ],
+          "state_changes": {
+            "damage": 5
+          },
+          "next_scene": "obtain_prism_bottle"
+        }
+      }
+    },
+    "obtain_prism_bottle": {
+      "id": "obtain_prism_bottle",
+      "narrative": [
+        "門後是一個小型密室。",
+        "",
+        "牆上陳列著古老的折光師遺物——但大多已經碎裂或褪色。",
+        "唯獨中央的展示台上，有一個完好無損的水晶瓶。",
+        "",
+        "那是稜光瓶。",
+        "",
+        "瓶身透明，內部流動著七彩的光芒。",
+        "這是折光師調配藥水的核心工具。",
+        "",
+        "守護靈的聲音在身後響起：",
+        "",
+        "「這是艾爾文留給你的。」",
+        "「稜光瓶能儲存光之能量，用於調配各種藥水。」",
+        "「每章你有三次調配機會，在光之節點可以充能。」",
+        "",
+        "你獲得了【稜光瓶】。"
+      ],
+      "actions": [
+        {
+          "id": "learn_alchemy",
+          "type": "continue",
+          "label": "學習藥水調配",
+          "data": {"next_scene": "alchemy_tutorial"}
+        }
+      ]
+    },
+    "alchemy_tutorial": {
+      "id": "alchemy_tutorial",
+      "narrative": [
+        "守護靈繼續說道：",
+        "",
+        "「讓我教你基礎的調配方法。」",
+        "",
+        "【藥水調配規則】",
+        "1. 只能在營地休息時調配",
+        "2. 每章有 3 次調配機會",
+        "3. 調配需要進行感知檢定",
+        "4. 失敗會損失 50% 材料",
+        "",
+        "【基礎配方】",
+        "- 紅光藥水：紅稜石 ×1 → 回復 10 HP",
+        "- 綠光藥水：綠稜石 ×1 → 回復 5 HP/回合 ×3",
+        "- 藍光藥水：藍稜石 ×1 → 回復 10 MP",
+        "",
+        "「拿好這些材料，你會需要的。」",
+        "",
+        "獲得：",
+        "- 紅稜石 ×3",
+        "- 綠稜石 ×3",
+        "- 藍稜石 ×3"
+      ],
+      "actions": [
+        {
+          "id": "continue_story",
+          "type": "continue",
+          "label": "繼續",
+          "data": {"next_scene": "guardian_farewell"}
+        }
+      ]
+    },
+    "guardian_farewell": {
+      "id": "guardian_farewell",
+      "narrative": [
+        "守護靈的身影開始變得模糊。",
+        "",
+        "「我的時間不多了...維持這個形態太消耗能量。」",
+        "「聽好，年輕的折光師...」",
+        "",
+        "「三稜聖杯，五百年前碎成七片。」",
+        "「第一片...在赤焰火山，被熔岩泰坦守護。」",
+        "",
+        "「這是艾爾文留給你的最後一樣東西。」",
+        "",
+        "守護靈遞給你一枚徽章，上面刻著折光師的標誌。",
+        "",
+        "「折光師徽章。戴上它，所有檢定 +5%。」",
+        "「這是你身份的證明，也是...責任的象徵。」",
+        "",
+        "光芒漸漸消散。",
+        "",
+        "「願光明...指引你的...道路...」",
+        "",
+        "守護靈消失了。",
+        "燈塔恢復了死寂。",
+        "",
+        "但你知道，你的旅程才剛剛開始。"
+      ],
+      "actions": [
+        {
+          "id": "finish_chapter",
+          "type": "continue",
+          "label": "章節結算",
+          "data": {"next_scene": "chapter_end"}
+        }
+      ]
+    },
+    "chapter_end": {
+      "id": "chapter_end",
+      "narrative": [
+        "═══════════════════════════════════════",
+        "",
+        "【序章完成】",
+        "",
+        "廢棄燈塔",
+        "",
+        "「每一個傳奇，都始於第一步。」",
+        "",
+        "═══════════════════════════════════════",
+        "",
+        "【獲得物品】",
+        "- 稜光瓶（關鍵道具）",
+        "- 折光師徽章（所有檢定 +5%）",
+        "- 基礎配方 ×3",
+        "",
+        "【獲得材料】",
+        "- 紅稜石 ×3",
+        "- 綠稜石 ×3",
+        "- 藍稜石 ×3",
+        "",
+        "【學會配方】",
+        "- 紅光藥水",
+        "- 綠光藥水",
+        "- 藍光藥水",
+        "",
+        "═══════════════════════════════════════",
+        "",
+        "【下一章預告】",
+        "赤焰火山——第一塊聖杯碎片的所在。",
+        "熔岩泰坦在那裡等待著你。",
+        "",
+        "═══════════════════════════════════════"
+      ],
+      "actions": []
+    }
+  }
+}

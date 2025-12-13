@@ -67,6 +67,8 @@ class ActionResponse(BaseModel):
     game_state: Optional[GameStateSchema] = None
     available_actions: list[dict[str, Any]]
     dice_result: Optional[dict[str, Any]] = None
+    scene_type: Optional[str] = None  # "narrative", "combat", etc.
+    combat_info: Optional[dict[str, Any]] = None  # Enemy info for combat scenes
 
 
 class SaveSlotInfo(BaseModel):
@@ -75,3 +77,8 @@ class SaveSlotInfo(BaseModel):
     chapter: Optional[str]
     updated_at: Optional[str]
     is_empty: bool
+
+
+class NewGameRequest(BaseModel):
+    character_name: str
+    background: Background

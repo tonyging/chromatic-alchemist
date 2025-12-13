@@ -11,10 +11,12 @@ from app.schemas.user import UserCreate, UserLogin, UserResponse, Token
 router = APIRouter()
 
 
-@router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/register", response_model=Token, status_code=status.HTTP_201_CREATED)
 async def register(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
-    # Check if user already exists
-    result = await db.execute(select(User).where(User.email == user_data.email))
+    # Check if user already exists (exclude soft-deleted)
+    result = await db.execute(
+        select(User).where(User.email == user_data.email, User.deleted_at.is_(None))
+    )
     existing_user = result.scalar_one_or_none()
 
     if existing_user:
@@ -30,13 +32,17 @@ async def register(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
     await db.commit()
     await db.refresh(user)
 
-    return user
+    # Return token (same as login)
+    access_token = create_access_token(data={"sub": str(user.id)})
+    return Token(access_token=access_token)
 
 
 @router.post("/login", response_model=Token)
 async def login(user_data: UserLogin, db: AsyncSession = Depends(get_db)):
-    # Find user
-    result = await db.execute(select(User).where(User.email == user_data.email))
+    # Find user (exclude soft-deleted)
+    result = await db.execute(
+        select(User).where(User.email == user_data.email, User.deleted_at.is_(None))
+    )
     user = result.scalar_one_or_none()
 
     if not user or not verify_password(user_data.password, user.hashed_password):

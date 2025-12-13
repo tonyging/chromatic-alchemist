@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useGame } from '../contexts/GameContext';
+import { formatDateTime } from '../utils/format';
 import type { Background } from '../types';
 
 const BACKGROUNDS: { value: Background; label: string; desc: string }[] = [
@@ -9,6 +10,18 @@ const BACKGROUNDS: { value: Background; label: string; desc: string }[] = [
   { value: 'herbalist', label: '藥草師', desc: '感知 +1' },
   { value: 'mage', label: '法師學徒', desc: '智力 +1' },
 ];
+
+const CHAPTER_NAMES: Record<string, string> = {
+  prologue: '序章',
+  chapter1: '第一章',
+  chapter2: '第二章',
+  chapter3: '第三章',
+};
+
+function getChapterName(chapter: string | null | undefined): string {
+  if (!chapter) return '';
+  return CHAPTER_NAMES[chapter] || chapter;
+}
 
 export default function SaveSelectPage() {
   const { user, logout } = useAuth();
@@ -82,7 +95,7 @@ export default function SaveSelectPage() {
           {saves.map((save) => (
             <button
               key={save.slot}
-              onClick={() => handleSlotClick(save.slot, save.isEmpty)}
+              onClick={() => handleSlotClick(save.slot, save.is_empty)}
               className={`p-4 rounded-lg border-2 text-left transition-colors ${
                 selectedSlot === save.slot
                   ? 'border-amber-500 bg-gray-800'
@@ -93,19 +106,19 @@ export default function SaveSelectPage() {
                 <span className="text-lg font-semibold">
                   存檔 {save.slot}
                 </span>
-                {save.isEmpty ? (
+                {save.is_empty ? (
                   <span className="text-gray-500">空白</span>
                 ) : (
                   <span className="text-gray-400 text-sm">
-                    {save.updatedAt}
+                    {formatDateTime(save.updated_at)}
                   </span>
                 )}
               </div>
-              {!save.isEmpty && (
+              {!save.is_empty && (
                 <div className="mt-2 text-gray-300">
-                  <span className="text-amber-400">{save.characterName}</span>
+                  <span className="text-amber-400">{save.character_name}</span>
                   <span className="text-gray-500 ml-2">
-                    第 {save.chapter} 章
+                    {getChapterName(save.chapter)}
                   </span>
                 </div>
               )}

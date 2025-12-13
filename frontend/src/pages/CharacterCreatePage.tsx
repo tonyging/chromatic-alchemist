@@ -16,7 +16,7 @@ const STAT_INFO: { key: keyof Stats; label: string; desc: string }[] = [
   { key: 'perception', label: '感知', desc: '探索、調配' },
 ];
 
-const TOTAL_POINTS = 9;
+const FREE_POINTS = 5;
 const MIN_STAT = 1;
 const MAX_STAT = 5;
 
@@ -30,14 +30,15 @@ export default function CharacterCreatePage() {
   const [characterName, setCharacterName] = useState('');
   const [background, setBackground] = useState<Background>('warrior');
   const [stats, setStats] = useState<Stats>({
-    strength: 2,
-    dexterity: 3,
-    intelligence: 2,
-    perception: 2,
+    strength: 1,
+    dexterity: 1,
+    intelligence: 1,
+    perception: 1,
   });
 
-  const usedPoints = stats.strength + stats.dexterity + stats.intelligence + stats.perception;
-  const remainingPoints = TOTAL_POINTS - usedPoints;
+  // 已使用的自由點數 = 總點數 - 4（每項基礎 1）
+  const usedFreePoints = (stats.strength - 1) + (stats.dexterity - 1) + (stats.intelligence - 1) + (stats.perception - 1);
+  const remainingPoints = FREE_POINTS - usedFreePoints;
 
   const adjustStat = (key: keyof Stats, delta: number) => {
     const newValue = stats[key] + delta;

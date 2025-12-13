@@ -86,14 +86,13 @@ class CustomStats(BaseModel):
     perception: int
 
     def validate_stats(self) -> bool:
-        """Validate total points = 9 and each stat is 1-5"""
-        total = self.strength + self.dexterity + self.intelligence + self.perception
-        if total != 9:
-            return False
+        """Validate: each stat 1-5, total free points used = 5 (total = 9)"""
         for val in [self.strength, self.dexterity, self.intelligence, self.perception]:
             if val < 1 or val > 5:
                 return False
-        return True
+        # 基礎 4 點（每項 1）+ 5 自由點 = 9
+        total = self.strength + self.dexterity + self.intelligence + self.perception
+        return total == 9
 
 
 class NewGameRequest(BaseModel):

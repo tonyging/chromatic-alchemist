@@ -213,7 +213,8 @@ class GameEngine:
             narrative = data.get("success_text", ["檢定成功！"])
             success = True
             # 優先使用 success_state_changes，否則使用通用 state_changes
-            state_changes = dict(data.get("success_state_changes", data.get("state_changes", {})))
+            raw_changes = data.get("success_state_changes") or data.get("state_changes") or {}
+            state_changes = dict(raw_changes)
             next_scene = data.get("next_scene")
             if next_scene:
                 self.state["scene"] = next_scene
@@ -228,7 +229,8 @@ class GameEngine:
             narrative = data.get("failure_text", ["檢定失敗。"])
             success = False
             # 失敗時使用 failure_state_changes
-            state_changes = dict(data.get("failure_state_changes", {}))
+            raw_changes = data.get("failure_state_changes") or {}
+            state_changes = dict(raw_changes)
 
         # 取得下一步行動
         next_actions = data.get("next_actions")

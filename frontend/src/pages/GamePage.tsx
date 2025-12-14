@@ -754,7 +754,7 @@ export default function GamePage() {
         )}
 
         {/* 底部對話框（手機版 - 固定高度防止跳動） */}
-        <div className="min-h-20 bg-gray-800 border-t border-gray-700 p-3 safe-area-pb">
+        <div className="min-h-[100px] bg-gray-800 border-t border-gray-700 p-3 safe-area-pb">
           <div className="h-full flex items-center justify-center">
             {isLoading ? (
               <p className="text-gray-500 animate-pulse text-sm">...</p>

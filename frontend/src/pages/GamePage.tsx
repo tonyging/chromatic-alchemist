@@ -33,6 +33,8 @@ export default function GamePage() {
   // 受擊特效狀態
   const [enemyHit, setEnemyHit] = useState(false);
   const [playerHit, setPlayerHit] = useState(false);
+  const enemyHitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const playerHitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // 手機版背包 Bottom Sheet 狀態
   const [showInventory, setShowInventory] = useState(false);
@@ -43,22 +45,36 @@ export default function GamePage() {
   // 戰鬥過渡動畫狀態
   const [combatTransition, setCombatTransition] = useState<'entering' | 'exiting' | null>(null);
   const prevSceneTypeRef = useRef(sceneType);
+  const combatTransitionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // 偵測場景類型變化，觸發過渡動畫
   useEffect(() => {
     if (prevSceneTypeRef.current !== sceneType) {
+      // 清除之前的 timer
+      if (combatTransitionTimerRef.current) {
+        clearTimeout(combatTransitionTimerRef.current);
+      }
       if (sceneType === 'combat' && prevSceneTypeRef.current !== 'combat') {
         // 進入戰鬥
         setCombatTransition('entering');
-        setTimeout(() => setCombatTransition(null), 1500);
+        combatTransitionTimerRef.current = setTimeout(() => setCombatTransition(null), 1000);
       } else if (sceneType !== 'combat' && prevSceneTypeRef.current === 'combat') {
         // 離開戰鬥（勝利）
         setCombatTransition('exiting');
-        setTimeout(() => setCombatTransition(null), 1500);
+        combatTransitionTimerRef.current = setTimeout(() => setCombatTransition(null), 1000);
       }
       prevSceneTypeRef.current = sceneType;
     }
   }, [sceneType]);
+
+  // 清理所有 timer（避免記憶體洩漏）
+  useEffect(() => {
+    return () => {
+      if (combatTransitionTimerRef.current) clearTimeout(combatTransitionTimerRef.current);
+      if (enemyHitTimerRef.current) clearTimeout(enemyHitTimerRef.current);
+      if (playerHitTimerRef.current) clearTimeout(playerHitTimerRef.current);
+    };
+  }, []);
 
   // Redirect if no active game
   useEffect(() => {
@@ -124,8 +140,11 @@ export default function GamePage() {
       }, typingSpeed);
       return () => clearTimeout(timer);
     } else {
-      // 打字完成，將 entry 加入 combatLog
-      setCombatLog(prev => [...prev, typingEntry]);
+      // 打字完成，將 entry 加入 combatLog（限制最多 50 條）
+      setCombatLog(prev => {
+        const updated = [...prev, typingEntry];
+        return updated.length > 50 ? updated.slice(-50) : updated;
+      });
       setTypingEntry(null);
       setTypingCharIndex(0);
     }
@@ -194,16 +213,18 @@ export default function GamePage() {
       }
       // 敵人受擊特效（玩家攻擊成功時）
       if (action.type === 'attack' && response.dice_result?.result === 'success') {
+        if (enemyHitTimerRef.current) clearTimeout(enemyHitTimerRef.current);
         setEnemyHit(true);
-        setTimeout(() => setEnemyHit(false), 500);
+        enemyHitTimerRef.current = setTimeout(() => setEnemyHit(false), 500);
       }
       // 玩家受擊特效（HP 減少時）
       const newPlayerHp = response.state_changes?.player_hp;
       if (typeof newPlayerHp === 'number' &&
           gameState?.player?.hp !== undefined &&
           newPlayerHp < gameState.player.hp) {
+        if (playerHitTimerRef.current) clearTimeout(playerHitTimerRef.current);
         setPlayerHit(true);
-        setTimeout(() => setPlayerHit(false), 500);
+        playerHitTimerRef.current = setTimeout(() => setPlayerHit(false), 500);
       }
       // 檢查 Game Over
       if (typeof newPlayerHp === 'number' && newPlayerHp <= 0) {
@@ -220,23 +241,33 @@ export default function GamePage() {
   }
 
   const inCombat = sceneType === 'combat' && combatInfo;
+  const isLowHp = gameState?.player
+    ? gameState.player.hp / gameState.player.max_hp <= 0.3
+    : false;
 
   return (
     <div className="h-screen bg-gray-900 text-white flex flex-col overflow-hidden relative">
-      {/* 戰鬥過渡動畫 Overlay */}
+      {/* 戰鬥過渡動畫 Overlay（可點擊跳過） */}
       {combatTransition && (
         <div
-          className={`fixed inset-0 z-50 flex items-center justify-center pointer-events-none ${
+          className={`fixed inset-0 z-50 flex flex-col items-center justify-center cursor-pointer ${
             combatTransition === 'entering'
               ? 'animate-combat-enter bg-red-900/80'
               : 'animate-combat-exit bg-green-900/80'
           }`}
+          onClick={() => {
+            if (combatTransitionTimerRef.current) {
+              clearTimeout(combatTransitionTimerRef.current);
+            }
+            setCombatTransition(null);
+          }}
         >
           <p className={`text-3xl font-bold ${
             combatTransition === 'entering' ? 'text-red-400' : 'text-green-400'
           }`}>
             {combatTransition === 'entering' ? '⚔️ 戰鬥開始！' : '🏆 勝利！'}
           </p>
+          <p className="text-gray-400 text-sm mt-4 animate-pulse">點擊跳過</p>
         </div>
       )}
 
@@ -257,19 +288,21 @@ export default function GamePage() {
                 <h3 className={`font-bold text-sm lg:text-base mb-2 ${combatInfo.enemy_hp <= 0 ? 'text-gray-500 line-through' : 'text-red-400'}`}>
                   {combatInfo.enemy_name}
                 </h3>
-                {/* HP 條 */}
-                <div className="mb-2">
-                  <div className="flex justify-between text-xs text-gray-400 mb-1">
-                    <span>HP</span>
-                    <span>{Math.max(0, combatInfo.enemy_hp)}/{combatInfo.enemy_max_hp}</span>
+                {/* HP 條（敵人死亡後隱藏） */}
+                {combatInfo.enemy_hp > 0 && (
+                  <div className="mb-2">
+                    <div className="flex justify-between text-xs text-gray-400 mb-1">
+                      <span>HP</span>
+                      <span>{combatInfo.enemy_hp}/{combatInfo.enemy_max_hp}</span>
+                    </div>
+                    <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-red-500 transition-all duration-500"
+                        style={{ width: `${(combatInfo.enemy_hp / combatInfo.enemy_max_hp) * 100}%` }}
+                      />
+                    </div>
                   </div>
-                  <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
-                    <div
-                      className={`h-full transition-all duration-500 ${combatInfo.enemy_hp <= 0 ? 'bg-gray-500' : 'bg-red-500'}`}
-                      style={{ width: `${Math.max(0, (combatInfo.enemy_hp / combatInfo.enemy_max_hp) * 100)}%` }}
-                    />
-                  </div>
-                </div>
+                )}
                 {/* 敵人能力 */}
                 <div className="text-xs space-y-1">
                   <div className="flex justify-between">
@@ -305,7 +338,7 @@ export default function GamePage() {
                 <div className="space-y-2 mb-3">
                   <div>
                     <div className={`flex justify-between text-xs mb-1 ${
-                      gameState.player.hp / gameState.player.max_hp <= 0.3 ? 'text-red-400' : 'text-gray-400'
+                      isLowHp ? 'text-red-400' : 'text-gray-400'
                     }`}>
                       <span>HP</span>
                       <span>{gameState.player.hp}/{gameState.player.max_hp}</span>
@@ -315,9 +348,7 @@ export default function GamePage() {
                     }`}>
                       <div
                         className={`h-full transition-all ${
-                          gameState.player.hp / gameState.player.max_hp <= 0.3
-                            ? 'bg-red-600 animate-pulse'
-                            : 'bg-red-500'
+                          isLowHp ? 'bg-red-600 animate-pulse' : 'bg-red-500'
                         }`}
                         style={{ width: `${(gameState.player.hp / gameState.player.max_hp) * 100}%` }}
                       />
@@ -398,11 +429,16 @@ export default function GamePage() {
                 ))}
                 {/* 正在打字的內容 */}
                 {typingEntry && (
-                  <TypingLogEntry
-                    fullText={fullText}
-                    charIndex={typingCharIndex}
-                    diceResult={typingEntry.diceResult}
-                  />
+                  <>
+                    <TypingLogEntry
+                      fullText={fullText}
+                      charIndex={typingCharIndex}
+                      diceResult={typingEntry.diceResult}
+                    />
+                    {typingCharIndex < fullText.length && (
+                      <p className="text-gray-500 text-xs text-center animate-pulse">點擊加速</p>
+                    )}
+                  </>
                 )}
               </>
             )}
@@ -517,14 +553,14 @@ export default function GamePage() {
         {/* 頂部：角色狀態 + 右上按鈕 */}
         <div className="bg-gray-800 p-2 border-b border-gray-700">
           <div className="flex items-start gap-2">
-            {/* 角色狀態 */}
+            {/* 角色狀態（整區可點擊展開屬性面板） */}
             {gameState?.player && (
-              <div className={`flex-1 transition-all duration-300 ${playerHit ? 'bg-red-900/50 animate-hit-shake' : ''}`}>
-                <button
-                  onClick={() => setShowStats(true)}
-                  className="flex items-center justify-between mb-1 w-full text-left"
-                  aria-label="查看角色屬性"
-                >
+              <button
+                onClick={() => setShowStats(true)}
+                className={`flex-1 transition-all duration-300 text-left ${playerHit ? 'bg-red-900/50 animate-hit-shake' : ''}`}
+                aria-label="查看角色屬性"
+              >
+                <div className="flex items-center justify-between mb-1">
                   <span className="text-amber-400 font-bold text-sm truncate flex items-center gap-1">
                     {gameState.player.name}
                     <svg className="w-3 h-3 text-amber-400/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -532,17 +568,17 @@ export default function GamePage() {
                     </svg>
                   </span>
                   <span className="text-amber-400/60 text-xs">{gameState.player.gold} G</span>
-                </button>
-                <div className="space-y-1">
+                </div>
+                <div className="space-y-1.5">
                   {/* HP */}
                   <div className="flex items-center gap-2">
                     <span className={`text-xs w-6 ${
-                      gameState.player.hp / gameState.player.max_hp <= 0.3 ? 'text-red-400' : 'text-gray-500'
+                      isLowHp ? 'text-red-400' : 'text-gray-500'
                     }`}>HP</span>
-                    <div className="flex-1 h-2 bg-gray-700 rounded-full overflow-hidden">
+                    <div className="flex-1 h-3 bg-gray-700 rounded-full overflow-hidden">
                       <div
                         className={`h-full transition-all ${
-                          gameState.player.hp / gameState.player.max_hp <= 0.3
+                          isLowHp
                             ? 'bg-red-600 animate-pulse'
                             : playerHit ? 'bg-red-500 animate-pulse' : 'bg-red-500'
                         }`}
@@ -550,7 +586,7 @@ export default function GamePage() {
                       />
                     </div>
                     <span className={`text-xs w-12 text-right ${
-                      gameState.player.hp / gameState.player.max_hp <= 0.3 ? 'text-red-400' : 'text-gray-400'
+                      isLowHp ? 'text-red-400' : 'text-gray-400'
                     }`}>
                       {gameState.player.hp}/{gameState.player.max_hp}
                     </span>
@@ -558,7 +594,7 @@ export default function GamePage() {
                   {/* MP */}
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-gray-500 w-6">MP</span>
-                    <div className="flex-1 h-2 bg-gray-700 rounded-full overflow-hidden">
+                    <div className="flex-1 h-3 bg-gray-700 rounded-full overflow-hidden">
                       <div
                         className="h-full bg-blue-500 transition-all"
                         style={{ width: `${(gameState.player.mp / gameState.player.max_mp) * 100}%` }}
@@ -569,7 +605,7 @@ export default function GamePage() {
                     </span>
                   </div>
                 </div>
-              </div>
+              </button>
             )}
             {/* 右上按鈕：離開 + 背包（垂直排列，44x44 觸控區域） */}
             <div className="flex flex-col items-center shrink-0">
@@ -619,18 +655,21 @@ export default function GamePage() {
                 <span className="text-amber-400">弱點: {combatInfo.enemy_weakness}</span>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-gray-500 w-6">HP</span>
-              <div className="flex-1 h-2 bg-gray-700 rounded-full overflow-hidden">
-                <div
-                  className={`h-full transition-all ${combatInfo.enemy_hp <= 0 ? 'bg-gray-500' : 'bg-red-500'}`}
-                  style={{ width: `${Math.max(0, (combatInfo.enemy_hp / combatInfo.enemy_max_hp) * 100)}%` }}
-                />
+            {/* HP 條（敵人死亡後隱藏） */}
+            {combatInfo.enemy_hp > 0 && (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-500 w-6">HP</span>
+                <div className="flex-1 h-3 bg-gray-700 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-red-500 transition-all"
+                    style={{ width: `${(combatInfo.enemy_hp / combatInfo.enemy_max_hp) * 100}%` }}
+                  />
+                </div>
+                <span className="text-xs text-gray-400 w-12 text-right">
+                  {combatInfo.enemy_hp}/{combatInfo.enemy_max_hp}
+                </span>
               </div>
-              <span className="text-xs text-gray-400 w-12 text-right">
-                {Math.max(0, combatInfo.enemy_hp)}/{combatInfo.enemy_max_hp}
-              </span>
-            </div>
+            )}
           </div>
         )}
 
@@ -661,30 +700,35 @@ export default function GamePage() {
               ))}
               {/* 正在打字的內容 */}
               {typingEntry && (
-                <TypingLogEntry
-                  fullText={fullText}
-                  charIndex={typingCharIndex}
-                  diceResult={typingEntry.diceResult}
-                  compact
-                />
+                <>
+                  <TypingLogEntry
+                    fullText={fullText}
+                    charIndex={typingCharIndex}
+                    diceResult={typingEntry.diceResult}
+                    compact
+                  />
+                  {typingCharIndex < fullText.length && (
+                    <p className="text-gray-500 text-xs text-center animate-pulse">點擊加速</p>
+                  )}
+                </>
               )}
             </>
           )}
         </div>
 
-        {/* 選項按鈕（手機版 - 在對話框上方） */}
+        {/* 選項按鈕（手機版 - 垂直排列） */}
         {!isReading && availableActions.length > 0 && (
           <div className="bg-gray-800 border-t border-gray-700 p-2">
-            <div className="flex flex-wrap gap-1.5 justify-center">
+            <div className="flex flex-col gap-1.5">
               {availableActions.map((action) => (
                 <button
                   key={action.id}
                   onClick={() => handleAction(action)}
                   disabled={isLoading}
-                  className={`py-2 px-3 rounded-lg transition-all text-xs ${
+                  className={`w-full py-2.5 px-3 rounded-lg transition-all text-sm ${
                     inCombat
-                      ? 'bg-red-900/50 border border-red-700'
-                      : 'bg-gray-700 border border-gray-600'
+                      ? 'bg-red-900/50 border border-red-700 active:bg-red-800/60'
+                      : 'bg-gray-700 border border-gray-600 active:bg-gray-600'
                   }`}
                 >
                   <span className="text-gray-100">{action.label}</span>
@@ -780,14 +824,14 @@ export default function GamePage() {
               <div>
                 <div className="flex justify-between text-sm mb-1">
                   <span className="text-gray-400">HP</span>
-                  <span className={gameState.player.hp / gameState.player.max_hp <= 0.3 ? 'text-red-400' : 'text-gray-300'}>
+                  <span className={isLowHp ? 'text-red-400' : 'text-gray-300'}>
                     {gameState.player.hp}/{gameState.player.max_hp}
                   </span>
                 </div>
                 <div className="h-3 bg-gray-700 rounded-full overflow-hidden">
                   <div
                     className={`h-full transition-all ${
-                      gameState.player.hp / gameState.player.max_hp <= 0.3 ? 'bg-red-600' : 'bg-red-500'
+                      isLowHp ? 'bg-red-600' : 'bg-red-500'
                     }`}
                     style={{ width: `${(gameState.player.hp / gameState.player.max_hp) * 100}%` }}
                   />

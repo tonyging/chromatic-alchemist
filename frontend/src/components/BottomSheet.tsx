@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactNode, type TouchEvent } from 'react';
+import { useRef, useState, useEffect, type ReactNode, type TouchEvent } from 'react';
 
 interface BottomSheetProps {
   isOpen: boolean;
@@ -10,12 +10,27 @@ interface BottomSheetProps {
 /**
  * 可拖曳關閉的 Bottom Sheet 元件
  * 往下拖曳超過 100px 時關閉
+ * 支援 ESC 鍵關閉
  */
 export default function BottomSheet({ isOpen, onClose, title, children }: BottomSheetProps) {
   const sheetRef = useRef<HTMLDivElement>(null);
   const [dragY, setDragY] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const startY = useRef(0);
+
+  // ESC 鍵關閉
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
 
   const handleTouchStart = (e: TouchEvent) => {
     startY.current = e.touches[0].clientY;
@@ -76,9 +91,9 @@ export default function BottomSheet({ isOpen, onClose, title, children }: Bottom
             <button
               onClick={onClose}
               aria-label="關閉"
-              className="p-1 text-gray-400 hover:text-white"
+              className="p-2 text-gray-400 hover:text-white active:text-gray-300 transition-colors"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>

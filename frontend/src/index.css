@@ -156,9 +156,9 @@ body {
 }
 
 .animate-combat-enter {
-  animation: combat-enter 1.5s ease-in-out forwards;
+  animation: combat-enter 1s ease-in-out forwards;
 }
 
 .animate-combat-exit {
-  animation: combat-exit 1.5s ease-in-out forwards;
+  animation: combat-exit 1s ease-in-out forwards;
 }

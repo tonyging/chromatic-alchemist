@@ -672,24 +672,9 @@ export default function GamePage() {
           )}
         </div>
 
-        {/* 底部對話框（手機版） */}
-        <div className="h-24 bg-gray-800 border-t border-gray-700 p-3">
-          <div className="h-full flex items-center justify-center">
-            {isLoading ? (
-              <p className="text-gray-500 animate-pulse text-sm">...</p>
-            ) : isReading && pendingNarrative.length > 0 ? (
-              <Typewriter texts={pendingNarrative} speed={50} onComplete={handleReadingComplete} />
-            ) : !inCombat && narrative.length === 0 ? (
-              <p className="text-gray-500 text-center text-sm">冒險即將開始...</p>
-            ) : (
-              <p className="text-gray-600 text-xs">— 等待行動 —</p>
-            )}
-          </div>
-        </div>
-
-        {/* 底部選項（手機版固定） */}
+        {/* 選項按鈕（手機版 - 在對話框上方） */}
         {!isReading && availableActions.length > 0 && (
-          <div className="bg-gray-800 border-t border-gray-700 p-2 safe-area-pb">
+          <div className="bg-gray-800 border-t border-gray-700 p-2">
             <div className="flex flex-wrap gap-1.5 justify-center">
               {availableActions.map((action) => (
                 <button
@@ -708,6 +693,21 @@ export default function GamePage() {
             </div>
           </div>
         )}
+
+        {/* 底部對話框（手機版 - 固定高度防止跳動） */}
+        <div className="min-h-16 bg-gray-800 border-t border-gray-700 p-3 safe-area-pb">
+          <div className="h-full flex items-center justify-center">
+            {isLoading ? (
+              <p className="text-gray-500 animate-pulse text-sm">...</p>
+            ) : isReading && pendingNarrative.length > 0 ? (
+              <Typewriter texts={pendingNarrative} speed={50} onComplete={handleReadingComplete} />
+            ) : !inCombat && narrative.length === 0 ? (
+              <p className="text-gray-500 text-center text-sm">冒險即將開始...</p>
+            ) : (
+              <p className="text-gray-600 text-xs">— 等待行動 —</p>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Exit Confirm Dialog */}

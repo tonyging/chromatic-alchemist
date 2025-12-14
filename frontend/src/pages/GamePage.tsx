@@ -4,12 +4,7 @@ import { useGame } from '../contexts/GameContext';
 import Typewriter from '../components/Typewriter';
 import ConfirmDialog from '../components/ConfirmDialog';
 import GameOverPanel from '../components/GameOverPanel';
-
-interface DiceResult {
-  roll: number;
-  target: number;
-  result: string;
-}
+import type { DiceResult } from '../types';
 
 interface LogEntry {
   id: number;
@@ -179,7 +174,7 @@ export default function GamePage() {
       });
       // 儲存骰子結果（沒有時清除）
       if (response.dice_result) {
-        setLastDiceResult(response.dice_result as DiceResult);
+        setLastDiceResult(response.dice_result);
       } else {
         setLastDiceResult(null);
       }
@@ -189,15 +184,15 @@ export default function GamePage() {
         setTimeout(() => setEnemyHit(false), 300);
       }
       // 玩家受擊特效（HP 減少時）
-      if (response.state_changes?.player_hp !== undefined &&
+      const newPlayerHp = response.state_changes?.player_hp;
+      if (typeof newPlayerHp === 'number' &&
           gameState?.player?.hp !== undefined &&
-          response.state_changes.player_hp < gameState.player.hp) {
+          newPlayerHp < gameState.player.hp) {
         setPlayerHit(true);
         setTimeout(() => setPlayerHit(false), 300);
       }
       // 檢查 Game Over
-      if (response.state_changes?.player_hp !== undefined &&
-          response.state_changes.player_hp <= 0) {
+      if (typeof newPlayerHp === 'number' && newPlayerHp <= 0) {
         setIsGameOver(true);
       }
     } catch (error) {

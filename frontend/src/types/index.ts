@@ -104,6 +104,25 @@ export interface CombatInfo {
 // 場景類型
 export type SceneType = 'narrative' | 'combat';
 
+// 骰子結果
+export interface DiceResult {
+  roll: number;
+  target: number;
+  result: 'success' | 'failure' | 'critical_success' | 'critical_failure';
+  attribute?: string;
+  difficulty?: string;
+  modifier?: number;
+}
+
+// 狀態變更
+export interface StateChanges {
+  player_hp?: number | null;
+  player_mp?: number | null;
+  enemy_hp?: number | null;
+  gold?: number | null;
+  [key: string]: unknown;
+}
+
 // 動作回應
 export interface ActionResponse {
   success: boolean;
@@ -111,8 +130,8 @@ export interface ActionResponse {
   narrative: string[];
   game_state: GameState | null;
   available_actions: Record<string, unknown>[];
-  dice_result: Record<string, unknown> | null;
-  state_changes?: Record<string, unknown>;
+  dice_result: DiceResult | null;
+  state_changes?: StateChanges;
   scene_type?: SceneType | null;
   combat_info?: CombatInfo | null;
 }

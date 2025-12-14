@@ -219,6 +219,11 @@ class GameEngine:
                 self.state["scene"] = next_scene
                 state_changes["scene"] = next_scene
                 self._load_chapter_data()
+                # 檢查新場景的 on_enter_state_changes（如獲得物品）
+                new_scene = self.get_current_scene()
+                on_enter = new_scene.get("on_enter_state_changes", {})
+                if on_enter:
+                    state_changes.update(on_enter)
         else:
             narrative = data.get("failure_text", ["檢定失敗。"])
             success = False
@@ -698,8 +703,13 @@ class GameEngine:
             self.state["scene"] = next_scene
             state_changes["scene"] = next_scene
             self._load_chapter_data()
-
-        scene = self.get_current_scene()
+            # 檢查新場景的 on_enter_state_changes（如獲得物品）
+            scene = self.get_current_scene()
+            on_enter = scene.get("on_enter_state_changes", {})
+            if on_enter:
+                state_changes.update(on_enter)
+        else:
+            scene = self.get_current_scene()
 
         return ActionResult(
             success=True,

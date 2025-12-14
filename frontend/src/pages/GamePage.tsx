@@ -151,10 +151,10 @@ export default function GamePage() {
       }, typingSpeed);
       return () => clearTimeout(timer);
     } else {
-      // 打字完成，將 entry 加入 combatLog（限制最多 50 條）
+      // 打字完成，將 entry 加入 combatLog（限制最多 100 條）
       setCombatLog(prev => {
         const updated = [...prev, typingEntry];
-        return updated.length > 50 ? updated.slice(-50) : updated;
+        return updated.length > 100 ? updated.slice(-100) : updated;
       });
       setTypingEntry(null);
       setTypingCharIndex(0);
@@ -219,6 +219,11 @@ export default function GamePage() {
   };
 
   const handleAction = async (action: { id: string; type: string; label: string; data?: Record<string, unknown> }) => {
+    // 觸覺反饋（手機版）
+    if (navigator.vibrate) {
+      navigator.vibrate(50);
+    }
+
     try {
       const response = await sendAction({
         action_type: action.type,
@@ -346,9 +351,9 @@ export default function GamePage() {
           </div>
 
           {/* 左下：角色狀態 */}
-          <div className={`flex-1 p-3 lg:p-4 flex flex-col transition-all duration-300 ${
-            playerHit ? 'bg-red-900/50 animate-hit-shake' : ''
-          }`}>
+          <div className={`flex-1 p-3 lg:p-4 flex flex-col transition-all duration-300
+            ${isLowHp ? 'border-l-4 border-red-500 animate-pulse' : ''}
+            ${playerHit ? 'bg-red-900/50 animate-hit-shake' : ''}`}>
             {gameState?.player ? (
               <>
                 <h2 className={`text-base lg:text-lg font-bold mb-2 transition-colors ${
@@ -585,8 +590,9 @@ export default function GamePage() {
             {gameState?.player && (
               <button
                 onClick={() => setShowStats(true)}
-                className={`flex-1 transition-all duration-300 text-left
-                  focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-inset rounded-sm
+                className={`flex-1 transition-all duration-300 text-left rounded-sm
+                  focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-inset
+                  ${isLowHp ? 'border-2 border-red-500 animate-pulse' : 'border-2 border-transparent'}
                   ${playerHit ? 'bg-red-900/50 animate-hit-shake' : ''}`}
                 aria-label="查看角色屬性"
               >

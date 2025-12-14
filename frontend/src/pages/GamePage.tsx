@@ -35,6 +35,9 @@ export default function GamePage() {
   const [enemyHit, setEnemyHit] = useState(false);
   const [playerHit, setPlayerHit] = useState(false);
 
+  // 手機版背包 Bottom Sheet 狀態
+  const [showInventory, setShowInventory] = useState(false);
+
   // Redirect if no active game
   useEffect(() => {
     if (!currentSlot) {
@@ -538,49 +541,74 @@ export default function GamePage() {
 
       {/* ===== 手機版 (md 以下) ===== */}
       <div className="flex md:hidden flex-col flex-1 min-h-0">
-        {/* 頂部狀態列：角色 HP/MP + 敵人（戰鬥時） */}
+        {/* 頂部：角色狀態（獨立一列） */}
         <div className="bg-gray-800 p-2 border-b border-gray-700">
-          <div className="flex items-center gap-3">
-            {/* 角色狀態 */}
-            {gameState?.player && (
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-amber-400 font-bold text-sm truncate">{gameState.player.name}</span>
-                  <span className="text-amber-400/60 text-xs">{gameState.player.gold}G</span>
+          {gameState?.player && (
+            <div className={`transition-all duration-150 ${playerHit ? 'bg-red-900/40' : ''}`}>
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-amber-400 font-bold text-sm truncate">{gameState.player.name}</span>
+                <span className="text-amber-400/60 text-xs">{gameState.player.gold} G</span>
+              </div>
+              <div className="space-y-1">
+                {/* HP */}
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-500 w-6">HP</span>
+                  <div className="flex-1 h-2 bg-gray-700 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full bg-red-500 transition-all ${playerHit ? 'animate-pulse' : ''}`}
+                      style={{ width: `${(gameState.player.hp / gameState.player.max_hp) * 100}%` }}
+                    />
+                  </div>
+                  <span className="text-xs text-gray-400 w-12 text-right">
+                    {gameState.player.hp}/{gameState.player.max_hp}
+                  </span>
                 </div>
-                <div className="flex gap-2">
-                  <div className="flex-1">
-                    <div className="h-1.5 bg-gray-700 rounded-full overflow-hidden">
-                      <div className="h-full bg-red-500" style={{ width: `${(gameState.player.hp / gameState.player.max_hp) * 100}%` }} />
-                    </div>
-                    <span className="text-xs text-gray-500">{gameState.player.hp}/{gameState.player.max_hp}</span>
+                {/* MP */}
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-500 w-6">MP</span>
+                  <div className="flex-1 h-2 bg-gray-700 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-blue-500 transition-all"
+                      style={{ width: `${(gameState.player.mp / gameState.player.max_mp) * 100}%` }}
+                    />
                   </div>
-                  <div className="flex-1">
-                    <div className="h-1.5 bg-gray-700 rounded-full overflow-hidden">
-                      <div className="h-full bg-blue-500" style={{ width: `${(gameState.player.mp / gameState.player.max_mp) * 100}%` }} />
-                    </div>
-                    <span className="text-xs text-gray-500">{gameState.player.mp}/{gameState.player.max_mp}</span>
-                  </div>
+                  <span className="text-xs text-gray-400 w-12 text-right">
+                    {gameState.player.mp}/{gameState.player.max_mp}
+                  </span>
                 </div>
               </div>
-            )}
-            {/* 敵人狀態（戰鬥時） */}
-            {inCombat && (
-              <div className="w-28 bg-red-900/30 rounded p-1.5">
-                <div className="text-xs text-red-400 font-bold truncate">{combatInfo.enemy_name}</div>
-                <div className="h-1.5 bg-gray-700 rounded-full overflow-hidden mt-1">
-                  <div className="h-full bg-red-500" style={{ width: `${Math.max(0, (combatInfo.enemy_hp / combatInfo.enemy_max_hp) * 100)}%` }} />
-                </div>
-              </div>
-            )}
-            {/* 選單按鈕 */}
-            <button onClick={handleExit} className="p-2 text-gray-400 hover:text-white">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            </button>
-          </div>
+            </div>
+          )}
         </div>
+
+        {/* 敵人狀態（戰鬥時獨立一列） */}
+        {inCombat && (
+          <div className={`bg-gray-800 px-2 py-1.5 border-b border-gray-700 transition-all duration-150 ${
+            enemyHit ? 'bg-red-600/40' : ''
+          }`}>
+            <div className="flex items-center justify-between mb-1">
+              <span className={`text-sm font-bold ${combatInfo.enemy_hp <= 0 ? 'text-gray-500 line-through' : 'text-red-400'}`}>
+                {combatInfo.enemy_name}
+              </span>
+              <div className="flex items-center gap-2 text-xs">
+                <span className="text-gray-500">迴避 {combatInfo.enemy_evasion}%</span>
+                <span className="text-amber-400">弱點: {combatInfo.enemy_weakness}</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-gray-500 w-6">HP</span>
+              <div className="flex-1 h-2 bg-gray-700 rounded-full overflow-hidden">
+                <div
+                  className={`h-full transition-all ${combatInfo.enemy_hp <= 0 ? 'bg-gray-500' : 'bg-red-500'}`}
+                  style={{ width: `${Math.max(0, (combatInfo.enemy_hp / combatInfo.enemy_max_hp) * 100)}%` }}
+                />
+              </div>
+              <span className="text-xs text-gray-400 w-12 text-right">
+                {Math.max(0, combatInfo.enemy_hp)}/{combatInfo.enemy_max_hp}
+              </span>
+            </div>
+          </div>
+        )}
 
         {/* 中間主區域：戰鬥 log */}
         <div
@@ -696,19 +724,118 @@ export default function GamePage() {
 
         {/* 底部對話框（手機版 - 固定高度防止跳動） */}
         <div className="min-h-16 bg-gray-800 border-t border-gray-700 p-3 safe-area-pb">
-          <div className="h-full flex items-center justify-center">
-            {isLoading ? (
-              <p className="text-gray-500 animate-pulse text-sm">...</p>
-            ) : isReading && pendingNarrative.length > 0 ? (
-              <Typewriter texts={pendingNarrative} speed={50} onComplete={handleReadingComplete} />
-            ) : !inCombat && narrative.length === 0 ? (
-              <p className="text-gray-500 text-center text-sm">冒險即將開始...</p>
-            ) : (
-              <p className="text-gray-600 text-xs">— 等待行動 —</p>
-            )}
+          <div className="h-full flex items-center gap-2">
+            {/* 對話框內容 */}
+            <div className="flex-1 flex items-center justify-center">
+              {isLoading ? (
+                <p className="text-gray-500 animate-pulse text-sm">...</p>
+              ) : isReading && pendingNarrative.length > 0 ? (
+                <Typewriter texts={pendingNarrative} speed={50} onComplete={handleReadingComplete} />
+              ) : !inCombat && narrative.length === 0 ? (
+                <p className="text-gray-500 text-center text-sm">冒險即將開始...</p>
+              ) : (
+                <p className="text-gray-600 text-xs">— 等待行動 —</p>
+              )}
+            </div>
+            {/* 右側按鈕：背包 + 選單 */}
+            <div className="flex items-center gap-1 shrink-0">
+              {/* 背包按鈕 */}
+              <button
+                onClick={() => setShowInventory(true)}
+                className="p-2 text-gray-400 hover:text-amber-400 transition-colors relative"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                    d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                </svg>
+                {/* 物品數量徽章 */}
+                {gameState?.player?.inventory && gameState.player.inventory.length > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 bg-amber-500 text-gray-900 text-xs font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                    {gameState.player.inventory.length}
+                  </span>
+                )}
+              </button>
+              {/* 選單按鈕 */}
+              <button
+                onClick={handleExit}
+                className="p-2 text-gray-400 hover:text-white transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
       </div>
+
+      {/* 手機版 Bottom Sheet 物品欄 */}
+      {showInventory && (
+        <div className="md:hidden fixed inset-0 z-50">
+          {/* 半透明遮罩 */}
+          <div
+            className="absolute inset-0 bg-black/60"
+            onClick={() => setShowInventory(false)}
+          />
+          {/* Bottom Sheet */}
+          <div className="absolute bottom-0 left-0 right-0 bg-gray-800 rounded-t-2xl max-h-[60vh] flex flex-col animate-slide-up safe-area-pb">
+            {/* Header */}
+            <div className="flex items-center justify-between p-3 border-b border-gray-700">
+              <h3 className="text-amber-400 font-bold">物品欄</h3>
+              <button
+                onClick={() => setShowInventory(false)}
+                className="p-1 text-gray-400 hover:text-white"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            {/* 物品列表 */}
+            <div className="flex-1 overflow-y-auto p-3">
+              {!gameState?.player?.inventory || gameState.player.inventory.length === 0 ? (
+                <p className="text-gray-500 text-center py-8">空無一物</p>
+              ) : (
+                <ul className="space-y-2">
+                  {gameState.player.inventory.map((item, i) => {
+                    const isConsumable = item.type === 'consumable' || item.type === 'potion';
+                    return (
+                      <li
+                        key={i}
+                        className="flex items-center justify-between p-3 bg-gray-700/50 rounded-lg"
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className={isConsumable ? 'text-green-400' : 'text-gray-300'}>
+                            {item.name}
+                          </span>
+                          <span className="text-gray-500 text-sm">x{item.quantity}</span>
+                        </div>
+                        {isConsumable && (
+                          <button
+                            onClick={() => {
+                              handleAction({
+                                id: `use_${item.id}`,
+                                type: 'use_item',
+                                label: item.name,
+                                data: { item_id: item.id }
+                              });
+                              setShowInventory(false);
+                            }}
+                            disabled={isLoading}
+                            className="px-3 py-1 bg-amber-600 hover:bg-amber-500 text-white text-sm rounded transition-colors disabled:bg-gray-600"
+                          >
+                            使用
+                          </button>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Exit Confirm Dialog */}
       <ConfirmDialog

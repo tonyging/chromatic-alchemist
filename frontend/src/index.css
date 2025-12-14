@@ -35,3 +35,22 @@ body {
   scrollbar-width: thin;
   scrollbar-color: #4b5563 #1f2937;
 }
+
+/* Bottom Sheet slide up animation */
+@keyframes slide-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.3s ease-out;
+}
+
+/* Safe area for iPhone notch/home indicator */
+.safe-area-pb {
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}

@@ -186,3 +186,56 @@ body {
 .animate-combat-exit {
   animation: combat-exit 1s ease-in-out forwards;
 }
+
+/* Victory celebration - coin scatter animation */
+@keyframes coin-scatter {
+  0% {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--tx), var(--ty)) scale(0.5) rotate(360deg);
+  }
+}
+
+.victory-celebration {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 100;
+}
+
+.coin {
+  position: absolute;
+  left: 50%;
+  top: 40%;
+  font-size: 24px;
+  animation: coin-scatter 1.2s ease-out forwards;
+}
+
+/* Landscape mode optimizations for mobile */
+@media (max-width: 767px) and (orientation: landscape) {
+  /* Reduce vertical spacing in landscape */
+  .landscape\:min-h-20 {
+    min-height: 5rem; /* 80px, reduced from 112px/128px */
+  }
+
+  .landscape\:h-auto {
+    height: auto;
+  }
+
+  .landscape\:max-h-32 {
+    max-height: 8rem; /* 128px */
+  }
+
+  .landscape\:py-1 {
+    padding-top: 0.25rem;
+    padding-bottom: 0.25rem;
+  }
+
+  .landscape\:text-xs {
+    font-size: 0.75rem;
+    line-height: 1rem;
+  }
+}

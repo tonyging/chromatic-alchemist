@@ -51,6 +51,95 @@ export default function GamePage() {
   const [showSpeedTip, setShowSpeedTip] = useState(false);
   const speedTipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // 勝利慶祝動畫狀態
+  const [showVictoryCelebration, setShowVictoryCelebration] = useState(false);
+  const victoryCelebrationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // 音效系統狀態（從 localStorage 讀取）
+  const [isSoundEnabled, setIsSoundEnabled] = useState(() => {
+    const saved = localStorage.getItem('sound_enabled');
+    return saved !== null ? saved === 'true' : true; // 預設開啟
+  });
+
+  // 切換音效開關
+  const toggleSound = () => {
+    setIsSoundEnabled((prev) => {
+      const newValue = !prev;
+      localStorage.setItem('sound_enabled', String(newValue));
+      return newValue;
+    });
+  };
+
+  // 播放音效（用 Web Audio API 生成音調）
+  const playSound = (type: 'attack' | 'hit' | 'critical' | 'victory') => {
+    if (!isSoundEnabled) return;
+
+    try {
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+
+      // 根據音效類型設定頻率和持續時間
+      switch (type) {
+        case 'attack':
+          oscillator.frequency.value = 440; // A4
+          gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+          gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+          oscillator.stop(audioContext.currentTime + 0.1);
+          break;
+        case 'hit':
+          oscillator.frequency.value = 220; // A3
+          gainNode.gain.setValueAtTime(0.15, audioContext.currentTime);
+          gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.15);
+          oscillator.stop(audioContext.currentTime + 0.15);
+          break;
+        case 'critical':
+          oscillator.frequency.value = 880; // A5
+          gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
+          gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+          oscillator.stop(audioContext.currentTime + 0.3);
+          break;
+        case 'victory':
+          oscillator.frequency.value = 523.25; // C5
+          gainNode.gain.setValueAtTime(0.15, audioContext.currentTime);
+          gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+          oscillator.stop(audioContext.currentTime + 0.5);
+          break;
+      }
+
+      oscillator.start();
+    } catch (error) {
+      console.error('音效播放失敗:', error);
+    }
+  };
+
+  // 物品分組函數（電腦版物品欄用）
+  const groupInventoryByType = (inventory: typeof gameState.player.inventory) => {
+    const groups = {
+      potion: [] as typeof inventory,
+      equipment: [] as typeof inventory,
+      material: [] as typeof inventory,
+      other: [] as typeof inventory,
+    };
+
+    inventory.forEach((item) => {
+      if (item.type === 'consumable' || item.type === 'potion') {
+        groups.potion.push(item);
+      } else if (item.type === 'equipment' || item.type === 'weapon' || item.type === 'armor') {
+        groups.equipment.push(item);
+      } else if (item.type === 'material' || item.type === 'ingredient') {
+        groups.material.push(item);
+      } else {
+        groups.other.push(item);
+      }
+    });
+
+    return groups;
+  };
+
   // 偵測場景類型變化，觸發過渡動畫
   useEffect(() => {
     if (prevSceneTypeRef.current !== sceneType) {
@@ -76,6 +165,11 @@ export default function GamePage() {
         // 離開戰鬥（勝利）
         setCombatTransition('exiting');
         combatTransitionTimerRef.current = setTimeout(() => setCombatTransition(null), 1000);
+
+        // 觸發勝利慶祝動畫和音效
+        setShowVictoryCelebration(true);
+        victoryCelebrationTimerRef.current = setTimeout(() => setShowVictoryCelebration(false), 1500);
+        playSound('victory');
       }
       prevSceneTypeRef.current = sceneType;
     }
@@ -88,6 +182,7 @@ export default function GamePage() {
       if (enemyHitTimerRef.current) clearTimeout(enemyHitTimerRef.current);
       if (playerHitTimerRef.current) clearTimeout(playerHitTimerRef.current);
       if (speedTipTimerRef.current) clearTimeout(speedTipTimerRef.current);
+      if (victoryCelebrationTimerRef.current) clearTimeout(victoryCelebrationTimerRef.current);
     };
   }, []);
 
@@ -504,8 +599,8 @@ export default function GamePage() {
           </div>
 
           {/* 底部對話框（在中間區域內） */}
-          <div className="h-28 lg:h-32 bg-gray-800 border-t border-gray-700 p-3 shrink-0">
-            <div className="h-full flex items-center justify-center">
+          <div className="min-h-28 lg:min-h-32 landscape:min-h-20 landscape:max-h-32 bg-gray-800 border-t border-gray-700 p-3 landscape:py-1 shrink-0">
+            <div className="flex items-center justify-center min-h-full">
               {isLoading ? (
                 <Spinner size="md" />
               ) : isReading && pendingNarrative.length > 0 ? (
@@ -533,45 +628,69 @@ export default function GamePage() {
             <div className="text-xs">
               {!gameState?.player?.inventory || gameState.player.inventory.length === 0 ? (
                 <p className="text-gray-500">空無一物</p>
-              ) : (
-                <ul className="space-y-1">
-                  {gameState.player.inventory.map((item) => {
-                    const isConsumable = item.type === 'consumable' || item.type === 'potion';
-                    return (
-                      <li key={item.id}>
-                        <Tooltip
-                          content={item.description || `${item.name} (${item.type})`}
-                          position="bottom"
-                        >
-                          {isConsumable ? (
-                            <button
-                              onClick={() => handleAction({
-                                id: `use_${item.id}`,
-                                type: 'use_item',
-                                label: item.name,
-                                data: { item_id: item.id }
-                              })}
-                              disabled={isLoading}
-                              className="w-full flex justify-between items-center p-1.5 rounded
-                                         bg-gray-700/50 hover:bg-gray-600/50 transition-colors
-                                         text-left disabled:opacity-50
-                                         focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500 focus-visible:ring-offset-1 focus-visible:ring-offset-gray-800"
-                            >
-                              <span className="text-green-400 truncate">{item.name}</span>
-                              <span className="text-gray-500 ml-1">x{item.quantity}</span>
-                            </button>
-                          ) : (
-                            <div className="flex justify-between p-1.5 text-gray-400 cursor-help">
-                              <span className="truncate">{item.name}</span>
-                              <span className="text-gray-600 ml-1">x{item.quantity}</span>
-                            </div>
-                          )}
-                        </Tooltip>
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
+              ) : (() => {
+                const groups = groupInventoryByType(gameState.player.inventory);
+                const groupLabels = {
+                  potion: '藥水',
+                  equipment: '裝備',
+                  material: '材料',
+                  other: '其他'
+                };
+
+                return (
+                  <div className="space-y-3">
+                    {(Object.keys(groups) as Array<keyof typeof groups>).map((groupKey) => {
+                      const items = groups[groupKey];
+                      if (items.length === 0) return null;
+
+                      return (
+                        <div key={groupKey}>
+                          <div className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">
+                            {groupLabels[groupKey]}
+                          </div>
+                          <ul className="space-y-1">
+                            {items.map((item) => {
+                              const isConsumable = item.type === 'consumable' || item.type === 'potion';
+                              return (
+                                <li key={item.id}>
+                                  <Tooltip
+                                    content={item.description || `${item.name} (${item.type})`}
+                                    position="bottom"
+                                  >
+                                    {isConsumable ? (
+                                      <button
+                                        onClick={() => handleAction({
+                                          id: `use_${item.id}`,
+                                          type: 'use_item',
+                                          label: item.name,
+                                          data: { item_id: item.id }
+                                        })}
+                                        disabled={isLoading}
+                                        className="w-full flex justify-between items-center p-1.5 rounded
+                                                   bg-gray-700/50 hover:bg-gray-600/50 transition-colors
+                                                   text-left disabled:opacity-50
+                                                   focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500 focus-visible:ring-offset-1 focus-visible:ring-offset-gray-800"
+                                      >
+                                        <span className="text-green-400 truncate">{item.name}</span>
+                                        <span className="text-gray-500 ml-1">x{item.quantity}</span>
+                                      </button>
+                                    ) : (
+                                      <div className="flex justify-between p-1.5 text-gray-400 cursor-help">
+                                        <span className="truncate">{item.name}</span>
+                                        <span className="text-gray-600 ml-1">x{item.quantity}</span>
+                                      </div>
+                                    )}
+                                  </Tooltip>
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
             </div>
           </div>
 
@@ -675,8 +794,27 @@ export default function GamePage() {
                 </div>
               </button>
             )}
-            {/* 右上按鈕：離開 + 背包（垂直排列，44x44 觸控區域） */}
+            {/* 右上按鈕：音效 + 離開 + 背包（垂直排列，44x44 觸控區域） */}
             <div className="flex flex-col items-center shrink-0">
+              {/* 音效開關按鈕 */}
+              <button
+                onClick={toggleSound}
+                aria-label={isSoundEnabled ? '關閉音效' : '開啟音效'}
+                className="w-11 h-11 flex items-center justify-center text-gray-400 hover:text-blue-400 transition-colors rounded-md
+                           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+              >
+                {isSoundEnabled ? (
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                      d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15.586H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 4.149 12 4.55 12 5.294v13.412c0 .744-1.077 1.145-1.707.545l-4.707-4.707z" />
+                  </svg>
+                ) : (
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                      d="M5.586 15.586H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 4.149 12 4.55 12 5.294v13.412c0 .744-1.077 1.145-1.707.545l-4.707-4.707zM17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
+                  </svg>
+                )}
+              </button>
               {/* 離開按鈕 - 使用門/登出圖示 */}
               <button
                 onClick={handleExit}
@@ -978,6 +1116,31 @@ export default function GamePage() {
         onCancel={() => setShowExitConfirm(false)}
         variant="warning"
       />
+
+      {/* Victory Celebration Animation */}
+      {showVictoryCelebration && (
+        <div className="victory-celebration">
+          {Array.from({ length: 12 }, (_, i) => {
+            const angle = (i / 12) * 2 * Math.PI;
+            const distance = 150 + Math.random() * 100;
+            const tx = Math.cos(angle) * distance;
+            const ty = Math.sin(angle) * distance;
+            return (
+              <div
+                key={i}
+                className="coin"
+                style={{
+                  '--tx': `${tx}px`,
+                  '--ty': `${ty}px`,
+                  animationDelay: `${i * 0.05}s`
+                } as React.CSSProperties}
+              >
+                💰
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Game Over Panel */}
       <GameOverPanel

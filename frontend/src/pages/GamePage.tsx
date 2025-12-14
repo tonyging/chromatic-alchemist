@@ -1,17 +1,13 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useLayoutEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import Typewriter from '../components/Typewriter';
 import ConfirmDialog from '../components/ConfirmDialog';
 import GameOverPanel from '../components/GameOverPanel';
+import CombatLogEntry, { type LogEntry } from '../components/CombatLogEntry';
+import TypingLogEntry from '../components/TypingLogEntry';
+import { isNarrativeText } from '../utils/combat';
 import type { DiceResult } from '../types';
-
-interface LogEntry {
-  id: number;
-  type: 'combat' | 'dice' | 'result' | 'system';
-  content: string[];
-  diceResult?: DiceResult;
-}
 
 export default function GamePage() {
   const { gameState, narrative, availableActions, sendAction, exitGame, loadGame, isLoading, currentSlot, sceneType, combatInfo } = useGame();
@@ -45,19 +41,12 @@ export default function GamePage() {
     }
   }, [currentSlot, navigate]);
 
-  // 判斷文字是否為純劇情（不含戰鬥/系統訊息）
-  const isNarrativeText = (texts: string[]): boolean => {
-    const systemPatterns = [
-      '獲得', '失去', '傷害', 'HP', 'MP', '經驗', '金幣',
-      '【', '】', '攻擊', '防禦', '迴避', '命中', '擲骰'
-    ];
-    return !texts.some(text =>
-      systemPatterns.some(pattern => text.includes(pattern))
-    );
-  };
-
   // 待打字的訊息佇列
   const [pendingEntries, setPendingEntries] = useState<LogEntry[]>([]);
+
+  // 用 ref 追蹤 lastDiceResult 以避免依賴問題
+  const lastDiceResultRef = useRef<DiceResult | null>(null);
+  lastDiceResultRef.current = lastDiceResult;
 
   // 偵測新敘事
   useEffect(() => {
@@ -74,7 +63,7 @@ export default function GamePage() {
           id: logIdRef.current++,
           type: sceneType === 'combat' ? 'combat' : 'system',
           content: newTexts,
-          diceResult: lastDiceResult || undefined,
+          diceResult: lastDiceResultRef.current || undefined,
         };
         setPendingEntries(prev => [...prev, entry]);
         setLastDiceResult(null);
@@ -84,7 +73,6 @@ export default function GamePage() {
         setIsReading(true);
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [narrative, sceneType]);
 
   // 處理打字佇列：當沒有正在打字的 entry 時，從佇列取出下一個
@@ -125,17 +113,14 @@ export default function GamePage() {
     }
   };
 
-  // 滾動到 log 底部（電腦版和手機版）
-  useEffect(() => {
-    // 當有正在打字的內容或新增完成的 log 時滾動
-    setTimeout(() => {
-      if (logContainerRef.current) {
-        logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
-      }
-      if (mobileLogContainerRef.current) {
-        mobileLogContainerRef.current.scrollTop = mobileLogContainerRef.current.scrollHeight;
-      }
-    }, 0);
+  // 滾動到 log 底部（電腦版和手機版）- 使用 useLayoutEffect 確保 DOM 更新後立即滾動
+  useLayoutEffect(() => {
+    if (logContainerRef.current) {
+      logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
+    }
+    if (mobileLogContainerRef.current) {
+      mobileLogContainerRef.current.scrollTop = mobileLogContainerRef.current.scrollHeight;
+    }
   }, [combatLog, typingCharIndex]);
 
   const handleReadingComplete = () => {
@@ -276,7 +261,9 @@ export default function GamePage() {
                 {/* HP/MP Bars */}
                 <div className="space-y-2 mb-3">
                   <div>
-                    <div className="flex justify-between text-xs text-gray-400 mb-1">
+                    <div className={`flex justify-between text-xs mb-1 ${
+                      gameState.player.hp / gameState.player.max_hp <= 0.3 ? 'text-red-400' : 'text-gray-400'
+                    }`}>
                       <span>HP</span>
                       <span>{gameState.player.hp}/{gameState.player.max_hp}</span>
                     </div>
@@ -284,7 +271,11 @@ export default function GamePage() {
                       playerHit ? 'animate-pulse' : ''
                     }`}>
                       <div
-                        className="h-full bg-red-500 transition-all"
+                        className={`h-full transition-all ${
+                          gameState.player.hp / gameState.player.max_hp <= 0.3
+                            ? 'bg-red-600 animate-pulse'
+                            : 'bg-red-500'
+                        }`}
                         style={{ width: `${(gameState.player.hp / gameState.player.max_hp) * 100}%` }}
                       />
                     </div>
@@ -360,81 +351,15 @@ export default function GamePage() {
               <>
                 {/* 已完成的 log */}
                 {combatLog.map((entry) => (
-                  <div key={entry.id} className="space-y-1">
-                    {entry.diceResult && (
-                      <p className={`text-sm ${
-                        entry.diceResult.result === 'success' || entry.diceResult.result === 'critical_success'
-                          ? 'text-green-400'
-                          : entry.diceResult.result === 'critical_failure'
-                            ? 'text-red-400'
-                            : 'text-gray-400'
-                      }`}>
-                        擲骰 {entry.diceResult.roll}/{entry.diceResult.target} — {
-                          entry.diceResult.result === 'success' ? '成功' :
-                          entry.diceResult.result === 'critical_success' ? '大成功！' :
-                          entry.diceResult.result === 'failure' ? '失敗' : '大失敗...'
-                        }
-                      </p>
-                    )}
-                    {entry.content.map((text, i) => (
-                      <p
-                        key={i}
-                        className={`leading-relaxed text-sm ${
-                          text === '' ? 'h-2' :
-                          text.startsWith('【') ? 'text-amber-400 font-semibold' :
-                          text.includes('傷害') ? 'text-red-300' :
-                          text.includes('HP:') ? 'text-gray-500 text-xs' :
-                          text.includes('獲得') ? 'text-green-400' :
-                          'text-gray-200'
-                        }`}
-                      >
-                        {text || '\u00A0'}
-                      </p>
-                    ))}
-                  </div>
+                  <CombatLogEntry key={entry.id} entry={entry} />
                 ))}
                 {/* 正在打字的內容 */}
                 {typingEntry && (
-                  <div className="space-y-1">
-                    {typingEntry.diceResult && (
-                      <p className={`text-sm ${
-                        typingEntry.diceResult.result === 'success' || typingEntry.diceResult.result === 'critical_success'
-                          ? 'text-green-400'
-                          : typingEntry.diceResult.result === 'critical_failure'
-                            ? 'text-red-400'
-                            : 'text-gray-400'
-                      }`}>
-                        擲骰 {typingEntry.diceResult.roll}/{typingEntry.diceResult.target} — {
-                          typingEntry.diceResult.result === 'success' ? '成功' :
-                          typingEntry.diceResult.result === 'critical_success' ? '大成功！' :
-                          typingEntry.diceResult.result === 'failure' ? '失敗' : '大失敗...'
-                        }
-                      </p>
-                    )}
-                    {/* 打字中的文字 */}
-                    {(() => {
-                      const displayedText = fullText.slice(0, typingCharIndex);
-                      const lines = displayedText.split('\n');
-                      return lines.map((text, i) => (
-                        <p
-                          key={i}
-                          className={`leading-relaxed text-sm ${
-                            text === '' ? 'h-2' :
-                            text.startsWith('【') ? 'text-amber-400 font-semibold' :
-                            text.includes('傷害') ? 'text-red-300' :
-                            text.includes('HP:') ? 'text-gray-500 text-xs' :
-                            text.includes('獲得') ? 'text-green-400' :
-                            'text-gray-200'
-                          }`}
-                        >
-                          {text || '\u00A0'}
-                          {i === lines.length - 1 && typingCharIndex < fullText.length && (
-                            <span className="animate-pulse text-amber-400">▌</span>
-                          )}
-                        </p>
-                      ));
-                    })()}
-                  </div>
+                  <TypingLogEntry
+                    fullText={fullText}
+                    charIndex={typingCharIndex}
+                    diceResult={typingEntry.diceResult}
+                  />
                 )}
               </>
             )}
@@ -481,10 +406,10 @@ export default function GamePage() {
                 <p className="text-gray-500">空無一物</p>
               ) : (
                 <ul className="space-y-1">
-                  {gameState.player.inventory.map((item, i) => {
+                  {gameState.player.inventory.map((item) => {
                     const isConsumable = item.type === 'consumable' || item.type === 'potion';
                     return (
-                      <li key={i}>
+                      <li key={item.id}>
                         {isConsumable ? (
                           <button
                             onClick={() => handleAction({
@@ -554,14 +479,22 @@ export default function GamePage() {
                 <div className="space-y-1">
                   {/* HP */}
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-gray-500 w-6">HP</span>
+                    <span className={`text-xs w-6 ${
+                      gameState.player.hp / gameState.player.max_hp <= 0.3 ? 'text-red-400' : 'text-gray-500'
+                    }`}>HP</span>
                     <div className="flex-1 h-2 bg-gray-700 rounded-full overflow-hidden">
                       <div
-                        className={`h-full bg-red-500 transition-all ${playerHit ? 'animate-pulse' : ''}`}
+                        className={`h-full transition-all ${
+                          gameState.player.hp / gameState.player.max_hp <= 0.3
+                            ? 'bg-red-600 animate-pulse'
+                            : playerHit ? 'bg-red-500 animate-pulse' : 'bg-red-500'
+                        }`}
                         style={{ width: `${(gameState.player.hp / gameState.player.max_hp) * 100}%` }}
                       />
                     </div>
-                    <span className="text-xs text-gray-400 w-12 text-right">
+                    <span className={`text-xs w-12 text-right ${
+                      gameState.player.hp / gameState.player.max_hp <= 0.3 ? 'text-red-400' : 'text-gray-400'
+                    }`}>
                       {gameState.player.hp}/{gameState.player.max_hp}
                     </span>
                   </div>
@@ -581,21 +514,24 @@ export default function GamePage() {
                 </div>
               </div>
             )}
-            {/* 右上按鈕：選單 + 背包（垂直排列） */}
-            <div className="flex flex-col items-center gap-0.5 shrink-0">
-              {/* 選單按鈕 */}
+            {/* 右上按鈕：離開 + 背包（垂直排列，44x44 觸控區域） */}
+            <div className="flex flex-col items-center shrink-0">
+              {/* 離開按鈕 - 使用門/登出圖示 */}
               <button
                 onClick={handleExit}
-                className="p-1.5 text-gray-400 hover:text-white transition-colors"
+                aria-label="離開遊戲"
+                className="w-11 h-11 flex items-center justify-center text-gray-400 hover:text-red-400 transition-colors"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                    d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                 </svg>
               </button>
               {/* 背包按鈕 */}
               <button
                 onClick={() => setShowInventory(true)}
-                className="p-1.5 text-gray-400 hover:text-amber-400 transition-colors relative"
+                aria-label="開啟物品欄"
+                className="w-11 h-11 flex items-center justify-center text-gray-400 hover:text-amber-400 transition-colors relative"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
@@ -603,7 +539,7 @@ export default function GamePage() {
                 </svg>
                 {/* 物品數量徽章 */}
                 {gameState?.player?.inventory && gameState.player.inventory.length > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 bg-amber-500 text-gray-900 text-xs font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                  <span className="absolute top-1 right-1 bg-amber-500 text-gray-900 text-xs font-bold rounded-full w-4 h-4 flex items-center justify-center">
                     {gameState.player.inventory.length}
                   </span>
                 )}
@@ -641,6 +577,13 @@ export default function GamePage() {
           </div>
         )}
 
+        {/* 手機版教學提示 */}
+        {inCombat && combatInfo.tutorial_text && combatInfo.enemy_hp > 0 && (
+          <div className="bg-amber-900/30 border-b border-amber-700 px-3 py-2">
+            <p className="text-amber-300 text-xs">{combatInfo.tutorial_text}</p>
+          </div>
+        )}
+
         {/* 中間主區域：戰鬥 log */}
         <div
           ref={mobileLogContainerRef}
@@ -657,75 +600,16 @@ export default function GamePage() {
             <>
               {/* 已完成的 log */}
               {combatLog.map((entry) => (
-                <div key={entry.id} className="space-y-0.5">
-                  {entry.diceResult && (
-                    <p className={`text-xs ${
-                      entry.diceResult.result === 'success' || entry.diceResult.result === 'critical_success'
-                        ? 'text-green-400'
-                        : entry.diceResult.result === 'critical_failure'
-                          ? 'text-red-400'
-                          : 'text-gray-400'
-                    }`}>
-                      擲骰 {entry.diceResult.roll}/{entry.diceResult.target} — {
-                        entry.diceResult.result === 'success' ? '成功' :
-                        entry.diceResult.result === 'critical_success' ? '大成功！' :
-                        entry.diceResult.result === 'failure' ? '失敗' : '大失敗...'
-                      }
-                    </p>
-                  )}
-                  {entry.content.map((text, i) => (
-                    <p key={i} className={`leading-relaxed text-xs ${
-                      text === '' ? 'h-1' :
-                      text.startsWith('【') ? 'text-amber-400 font-semibold' :
-                      text.includes('傷害') ? 'text-red-300' :
-                      text.includes('獲得') ? 'text-green-400' :
-                      'text-gray-200'
-                    }`}>
-                      {text || '\u00A0'}
-                    </p>
-                  ))}
-                </div>
+                <CombatLogEntry key={entry.id} entry={entry} compact />
               ))}
               {/* 正在打字的內容 */}
               {typingEntry && (
-                <div className="space-y-0.5">
-                  {typingEntry.diceResult && (
-                    <p className={`text-xs ${
-                      typingEntry.diceResult.result === 'success' || typingEntry.diceResult.result === 'critical_success'
-                        ? 'text-green-400'
-                        : typingEntry.diceResult.result === 'critical_failure'
-                          ? 'text-red-400'
-                          : 'text-gray-400'
-                    }`}>
-                      擲骰 {typingEntry.diceResult.roll}/{typingEntry.diceResult.target} — {
-                        typingEntry.diceResult.result === 'success' ? '成功' :
-                        typingEntry.diceResult.result === 'critical_success' ? '大成功！' :
-                        typingEntry.diceResult.result === 'failure' ? '失敗' : '大失敗...'
-                      }
-                    </p>
-                  )}
-                  {(() => {
-                    const displayedText = fullText.slice(0, typingCharIndex);
-                    const lines = displayedText.split('\n');
-                    return lines.map((text, i) => (
-                      <p
-                        key={i}
-                        className={`leading-relaxed text-xs ${
-                          text === '' ? 'h-1' :
-                          text.startsWith('【') ? 'text-amber-400 font-semibold' :
-                          text.includes('傷害') ? 'text-red-300' :
-                          text.includes('獲得') ? 'text-green-400' :
-                          'text-gray-200'
-                        }`}
-                      >
-                        {text || '\u00A0'}
-                        {i === lines.length - 1 && typingCharIndex < fullText.length && (
-                          <span className="animate-pulse text-amber-400">▌</span>
-                        )}
-                      </p>
-                    ));
-                  })()}
-                </div>
+                <TypingLogEntry
+                  fullText={fullText}
+                  charIndex={typingCharIndex}
+                  diceResult={typingEntry.diceResult}
+                  compact
+                />
               )}
             </>
           )}
@@ -795,11 +679,11 @@ export default function GamePage() {
                 <p className="text-gray-500 text-center py-8">空無一物</p>
               ) : (
                 <ul className="space-y-2">
-                  {gameState.player.inventory.map((item, i) => {
+                  {gameState.player.inventory.map((item) => {
                     const isConsumable = item.type === 'consumable' || item.type === 'potion';
                     return (
                       <li
-                        key={i}
+                        key={item.id}
                         className="flex items-center justify-between p-3 bg-gray-700/50 rounded-lg"
                       >
                         <div className="flex items-center gap-2">

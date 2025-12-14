@@ -91,6 +91,32 @@ export default function GamePage() {
     };
   }, []);
 
+  // 鍵盤快捷鍵（電腦版數字鍵 1-9 選擇選項）
+  useEffect(() => {
+    // 只在有選項且不在載入/閱讀狀態時啟用
+    if (isLoading || isReading || availableActions.length === 0) return;
+
+    const handleKeyPress = (e: KeyboardEvent) => {
+      // 忽略在輸入框內的按鍵
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+
+      // 數字鍵 1-9
+      const num = parseInt(e.key);
+      if (num >= 1 && num <= 9) {
+        const index = num - 1;
+        if (index < availableActions.length) {
+          e.preventDefault();
+          handleAction(availableActions[index]);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [availableActions, isLoading, isReading]);
+
   // Redirect if no active game
   useEffect(() => {
     if (!currentSlot) {
@@ -567,7 +593,7 @@ export default function GamePage() {
                     key={action.id}
                     onClick={() => handleAction(action)}
                     disabled={isLoading}
-                    className={`w-full py-2 px-3 rounded-lg transition-all text-xs
+                    className={`w-full py-2 px-3 rounded-lg transition-all text-xs flex items-center justify-between
                       ${inCombat
                         ? 'bg-red-900/50 hover:bg-red-800/60 border border-red-700 hover:border-red-500'
                         : 'bg-gray-700 hover:bg-gray-600 border border-gray-600 hover:border-amber-500'}
@@ -576,6 +602,9 @@ export default function GamePage() {
                     aria-label={`選項 ${index + 1}: ${action.label}`}
                   >
                     <span className="text-gray-100">{action.label}</span>
+                    {index < 9 && (
+                      <span className="text-gray-500 text-[10px] ml-2 shrink-0">[{index + 1}]</span>
+                    )}
                   </button>
                 ))}
               </div>

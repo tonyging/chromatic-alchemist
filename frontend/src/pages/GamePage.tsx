@@ -9,7 +9,7 @@ import TypingLogEntry from '../components/TypingLogEntry';
 import BottomSheet from '../components/BottomSheet';
 import Spinner from '../components/Spinner';
 import Tooltip from '../components/Tooltip';
-import { isNarrativeText } from '../utils/combat';
+import { isNarrativeText, getWeaknessColorClass, getWeaknessIndicator } from '../utils/combat';
 import type { DiceResult } from '../types';
 
 export default function GamePage() {
@@ -336,9 +336,12 @@ export default function GamePage() {
                       <span className="text-gray-500">迴避</span>
                       <span className="text-gray-300">{combatInfo.enemy_evasion}%</span>
                     </div>
-                    <div className="flex justify-between">
+                    <div className="flex justify-between items-center">
                       <span className="text-gray-500">弱點</span>
-                      <span className="text-amber-400">{combatInfo.enemy_weakness}</span>
+                      <span className={`flex items-center gap-1 ${getWeaknessColorClass(combatInfo.enemy_weakness)}`}>
+                        <span>{getWeaknessIndicator(combatInfo.enemy_weakness)}</span>
+                        <span>{combatInfo.enemy_weakness}</span>
+                      </span>
                     </div>
                   </div>
                 )}
@@ -692,7 +695,10 @@ export default function GamePage() {
               {combatInfo.enemy_hp > 0 && (
                 <div className="flex items-center gap-2 text-xs">
                   <span className="text-gray-500">迴避 {combatInfo.enemy_evasion}%</span>
-                  <span className="text-amber-400">弱點: {combatInfo.enemy_weakness}</span>
+                  <span className={`flex items-center gap-1 ${getWeaknessColorClass(combatInfo.enemy_weakness)}`}>
+                    <span>{getWeaknessIndicator(combatInfo.enemy_weakness)}</span>
+                    <span>弱點: {combatInfo.enemy_weakness}</span>
+                  </span>
                 </div>
               )}
             </div>

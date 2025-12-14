@@ -71,3 +71,37 @@ export function isNarrativeText(texts: string[]): boolean {
     SYSTEM_PATTERNS.some(pattern => text.includes(pattern))
   );
 }
+
+/**
+ * 根據弱點類型返回對應的顏色類別
+ */
+export function getWeaknessColorClass(weakness: string): string {
+  const lower = weakness.toLowerCase();
+  if (lower.includes('紅') || lower.includes('red') || lower.includes('火') || lower.includes('力量')) {
+    return 'text-red-400';
+  }
+  if (lower.includes('藍') || lower.includes('blue') || lower.includes('冰') || lower.includes('智慧')) {
+    return 'text-blue-400';
+  }
+  if (lower.includes('綠') || lower.includes('green') || lower.includes('毒') || lower.includes('生命')) {
+    return 'text-green-400';
+  }
+  return 'text-amber-400'; // 預設金色
+}
+
+/**
+ * 根據弱點類型返回對應的光效圓點（用於視覺標示）
+ */
+export function getWeaknessIndicator(weakness: string): string {
+  const lower = weakness.toLowerCase();
+  if (lower.includes('紅') || lower.includes('red') || lower.includes('火') || lower.includes('力量')) {
+    return '🔴';
+  }
+  if (lower.includes('藍') || lower.includes('blue') || lower.includes('冰') || lower.includes('智慧')) {
+    return '🔵';
+  }
+  if (lower.includes('綠') || lower.includes('green') || lower.includes('毒') || lower.includes('生命')) {
+    return '🟢';
+  }
+  return '⚪'; // 預設白色
+}

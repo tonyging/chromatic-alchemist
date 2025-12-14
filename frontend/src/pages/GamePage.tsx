@@ -755,17 +755,15 @@ export default function GamePage() {
 
         {/* 底部對話框（手機版 - 固定高度防止跳動） */}
         <div className="min-h-[100px] bg-gray-800 border-t border-gray-700 p-3 safe-area-pb">
-          <div className="h-full flex items-start justify-center">
-            {isLoading ? (
-              <p className="text-gray-500 animate-pulse text-sm">...</p>
-            ) : isReading && pendingNarrative.length > 0 ? (
-              <Typewriter texts={pendingNarrative} speed={50} onComplete={handleReadingComplete} />
-            ) : !inCombat && narrative.length === 0 ? (
-              <p className="text-gray-500 text-center text-sm">冒險即將開始...</p>
-            ) : (
-              <p className="text-gray-600 text-xs">— 等待行動 —</p>
-            )}
-          </div>
+          {isLoading ? (
+            <p className="text-gray-500 animate-pulse text-sm text-center">...</p>
+          ) : isReading && pendingNarrative.length > 0 ? (
+            <Typewriter texts={pendingNarrative} speed={50} onComplete={handleReadingComplete} />
+          ) : !inCombat && narrative.length === 0 ? (
+            <p className="text-gray-500 text-center text-sm">冒險即將開始...</p>
+          ) : (
+            <p className="text-gray-600 text-xs text-center">— 等待行動 —</p>
+          )}
         </div>
       </div>
 

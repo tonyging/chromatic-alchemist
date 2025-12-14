@@ -445,8 +445,11 @@
             "",
             "守護靈搖頭：「武力無法解決這個問題。」"
           ],
-          "state_changes": {
+          "success_state_changes": {
             "damage": 5
+          },
+          "failure_state_changes": {
+            "damage": 3
           },
           "next_scene": "obtain_prism_bottle"
         }

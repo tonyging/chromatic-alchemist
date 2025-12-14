@@ -212,7 +212,8 @@ class GameEngine:
         if result in (DiceResult.CRITICAL_SUCCESS, DiceResult.SUCCESS):
             narrative = data.get("success_text", ["檢定成功！"])
             success = True
-            state_changes = dict(data.get("state_changes", {}))
+            # 優先使用 success_state_changes，否則使用通用 state_changes
+            state_changes = dict(data.get("success_state_changes", data.get("state_changes", {})))
             next_scene = data.get("next_scene")
             if next_scene:
                 self.state["scene"] = next_scene
@@ -221,7 +222,8 @@ class GameEngine:
         else:
             narrative = data.get("failure_text", ["檢定失敗。"])
             success = False
-            state_changes = {}
+            # 失敗時使用 failure_state_changes
+            state_changes = dict(data.get("failure_state_changes", {}))
 
         # 取得下一步行動
         next_actions = data.get("next_actions")
@@ -674,6 +676,8 @@ class GameEngine:
             "success_text": choice.get("success_text", []),
             "failure_text": choice.get("failure_text", []),
             "state_changes": choice.get("state_changes", {}),
+            "success_state_changes": choice.get("success_state_changes"),
+            "failure_state_changes": choice.get("failure_state_changes"),
             "next_scene": choice.get("next_scene"),
             "next_actions": choice.get("next_actions"),
         })

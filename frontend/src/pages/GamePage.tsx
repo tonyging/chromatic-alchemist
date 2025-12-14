@@ -375,7 +375,7 @@ export default function GamePage() {
                       playerHit ? 'animate-pulse' : ''
                     }`}>
                       <div
-                        className={`h-full transition-all ${
+                        className={`h-full transition-all duration-300 ${
                           isLowHp ? 'bg-red-600 animate-pulse' : 'bg-red-500'
                         }`}
                         style={{ width: `${(gameState.player.hp / gameState.player.max_hp) * 100}%` }}
@@ -389,7 +389,7 @@ export default function GamePage() {
                     </div>
                     <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
                       <div
-                        className="h-full bg-blue-500 transition-all"
+                        className="h-full bg-blue-500 transition-all duration-300"
                         style={{ width: `${(gameState.player.mp / gameState.player.max_mp) * 100}%` }}
                       />
                     </div>
@@ -613,7 +613,7 @@ export default function GamePage() {
                     }`}>HP</span>
                     <div className="flex-1 h-3 bg-gray-700 rounded-full overflow-hidden">
                       <div
-                        className={`h-full transition-all ${
+                        className={`h-full transition-all duration-300 ${
                           isLowHp
                             ? 'bg-red-600 animate-pulse'
                             : playerHit ? 'bg-red-500 animate-pulse' : 'bg-red-500'
@@ -632,7 +632,7 @@ export default function GamePage() {
                     <span className="text-xs text-gray-500 w-6">MP</span>
                     <div className="flex-1 h-3 bg-gray-700 rounded-full overflow-hidden">
                       <div
-                        className="h-full bg-blue-500 transition-all"
+                        className="h-full bg-blue-500 transition-all duration-300"
                         style={{ width: `${(gameState.player.mp / gameState.player.max_mp) * 100}%` }}
                       />
                     </div>
@@ -702,7 +702,7 @@ export default function GamePage() {
                 <span className="text-xs text-gray-500 w-6">HP</span>
                 <div className="flex-1 h-3 bg-gray-700 rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-red-500 transition-all"
+                    className="h-full bg-red-500 transition-all duration-300"
                     style={{ width: `${(combatInfo.enemy_hp / combatInfo.enemy_max_hp) * 100}%` }}
                   />
                 </div>
@@ -880,7 +880,7 @@ export default function GamePage() {
                 </div>
                 <div className="h-3 bg-gray-700 rounded-full overflow-hidden">
                   <div
-                    className={`h-full transition-all ${
+                    className={`h-full transition-all duration-300 ${
                       isLowHp ? 'bg-red-600' : 'bg-red-500'
                     }`}
                     style={{ width: `${(gameState.player.hp / gameState.player.max_hp) * 100}%` }}
@@ -894,7 +894,7 @@ export default function GamePage() {
                 </div>
                 <div className="h-3 bg-gray-700 rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-blue-500 transition-all"
+                    className="h-full bg-blue-500 transition-all duration-300"
                     style={{ width: `${(gameState.player.mp / gameState.player.max_mp) * 100}%` }}
                   />
                 </div>

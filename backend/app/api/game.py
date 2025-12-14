@@ -279,13 +279,24 @@ async def perform_action(
                 player["mp"] = action_result.state_changes["player_mp"]
                 updated_state["player"] = player
 
-        # Apply item additions
+        # Apply single item addition
         if "add_item" in action_result.state_changes:
             item = action_result.state_changes["add_item"]
             player = updated_state.get("player", {})
             if player:
                 inventory = player.get("inventory", [])
                 inventory.append(item)
+                player["inventory"] = inventory
+                updated_state["player"] = player
+
+        # Apply multiple items addition (for scene rewards)
+        if "add_items" in action_result.state_changes:
+            items = action_result.state_changes["add_items"]
+            player = updated_state.get("player", {})
+            if player:
+                inventory = player.get("inventory", [])
+                for item in items:
+                    inventory.append(item)
                 player["inventory"] = inventory
                 updated_state["player"] = player
 

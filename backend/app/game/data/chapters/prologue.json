@@ -121,8 +121,8 @@
             "周圍看起來很普通，只有岩石和海浪。",
             "你決定不再浪費時間。"
           ],
-          "state_changes": {
-            "add_item": {"id": "red_prism_stone", "quantity": 1}
+          "success_state_changes": {
+            "add_item": {"id": "red_prism_stone", "name": "紅稜石", "quantity": 1}
           },
           "next_actions": [
             {
@@ -476,6 +476,9 @@
         "",
         "你獲得了【稜光瓶】。"
       ],
+      "on_enter_state_changes": {
+        "add_item": {"id": "prism_bottle", "name": "稜光瓶", "quantity": 1, "type": "key_item"}
+      },
       "actions": [
         {
           "id": "learn_alchemy",
@@ -510,6 +513,13 @@
         "- 綠稜石 ×3",
         "- 藍稜石 ×3"
       ],
+      "on_enter_state_changes": {
+        "add_items": [
+          {"id": "red_prism_stone", "name": "紅稜石", "quantity": 3},
+          {"id": "green_prism_stone", "name": "綠稜石", "quantity": 3},
+          {"id": "blue_prism_stone", "name": "藍稜石", "quantity": 3}
+        ]
+      },
       "actions": [
         {
           "id": "continue_story",
@@ -546,6 +556,9 @@
         "",
         "但你知道，你的旅程才剛剛開始。"
       ],
+      "on_enter_state_changes": {
+        "add_item": {"id": "refractor_badge", "name": "折光師徽章", "quantity": 1, "type": "accessory", "effect": {"all_checks": 5}}
+      },
       "actions": [
         {
           "id": "finish_chapter",

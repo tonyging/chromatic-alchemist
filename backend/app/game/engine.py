@@ -611,18 +611,25 @@ class GameEngine:
     def _handle_continue(self, data: dict) -> ActionResult:
         """Handle continue/next action."""
         next_scene = data.get("next_scene", "")
+        state_changes: dict[str, Any] = {}
 
         if next_scene:
             self.state["scene"] = next_scene
+            state_changes["scene"] = next_scene
             self._load_chapter_data()
 
         scene = self.get_current_scene()
+
+        # 檢查場景是否有進入時的狀態變化（如獲得物品）
+        on_enter = scene.get("on_enter_state_changes", {})
+        if on_enter:
+            state_changes.update(on_enter)
 
         return ActionResult(
             success=True,
             message="繼續",
             narrative=scene.get("narrative", ["..."]),
-            state_changes={"scene": next_scene} if next_scene else {},
+            state_changes=state_changes,
             available_actions=scene.get("actions", self._get_available_actions()),
             scene_type=scene.get("type", "narrative"),
             combat_info=scene.get("combat_info"),

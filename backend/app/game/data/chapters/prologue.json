@@ -443,7 +443,7 @@
             "",
             "你受到 3 點傷害。",
             "",
-            "守護靈搖頭：「武力無法解決這個問題。」"
+            "守護靈搖頭：「武力無法解決這個問題。也許該試試其他方法。」"
           ],
           "success_state_changes": {
             "damage": 5
@@ -451,7 +451,27 @@
           "failure_state_changes": {
             "damage": 3
           },
-          "next_scene": "obtain_prism_bottle"
+          "next_scene": "obtain_prism_bottle",
+          "next_actions": [
+            {
+              "id": "solve_puzzle_after_fail",
+              "type": "choice",
+              "label": "調整鏡子（三色合一謎題）",
+              "data": {"choice_id": "solve_puzzle"}
+            },
+            {
+              "id": "ask_hint_after_fail",
+              "type": "choice",
+              "label": "請求守護靈提示",
+              "data": {"choice_id": "ask_hint"}
+            },
+            {
+              "id": "force_door_retry",
+              "type": "choice",
+              "label": "再次嘗試破門",
+              "data": {"choice_id": "force_door"}
+            }
+          ]
         }
       }
     },

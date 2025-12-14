@@ -309,7 +309,7 @@ export default function GamePage() {
                   ? 'bg-red-600/70 border-red-400 scale-105 shadow-lg shadow-red-500/50 animate-hit-shake'
                   : combatInfo.enemy_hp <= 0
                     ? 'bg-gray-800/30 border-gray-600'
-                    : 'bg-red-900/30 border-red-700'
+                    : 'bg-red-900/30 border-red-700 shadow-lg'
               }`}>
                 <h3 className={`font-bold text-sm lg:text-base mb-2 ${combatInfo.enemy_hp <= 0 ? 'text-gray-500 line-through' : 'text-red-400'}`}>
                   {combatInfo.enemy_name}
@@ -584,7 +584,7 @@ export default function GamePage() {
       {/* ===== 手機版 (md 以下) ===== */}
       <div className="flex md:hidden flex-col flex-1 min-h-0">
         {/* 頂部：角色狀態 + 右上按鈕 */}
-        <div className="bg-gray-800 p-2 border-b border-gray-700">
+        <div className="bg-gray-800 p-2 border-b border-gray-700" style={{ paddingTop: 'max(0.5rem, env(safe-area-inset-top))' }}>
           <div className="flex items-start gap-2">
             {/* 角色狀態（整區可點擊展開屬性面板） */}
             {gameState?.player && (

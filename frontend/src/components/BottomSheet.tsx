@@ -83,7 +83,7 @@ export default function BottomSheet({ isOpen, onClose, title, children }: Bottom
         >
           {/* 拖曳提示條 */}
           <div className="flex justify-center pt-2 pb-1">
-            <div className="w-10 h-1 bg-gray-600 rounded-full" />
+            <div className="w-12 h-1.5 bg-gray-600 rounded-full animate-pulse" />
           </div>
           {/* Header */}
           <div className="flex items-center justify-between px-3 pb-2 border-b border-gray-700">

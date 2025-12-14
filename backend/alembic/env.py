@@ -12,8 +12,8 @@ from app.models import Base
 config = context.config
 
 # Database URL (sync driver for alembic)
-# asyncpg -> psycopg2
-sync_url = settings.DATABASE_URL.replace("+asyncpg", "")
+# Use DATABASE_URL directly (no asyncpg prefix needed for sync)
+sync_url = settings.DATABASE_URL
 
 # Interpret the config file for Python logging.
 if config.config_file_name is not None:

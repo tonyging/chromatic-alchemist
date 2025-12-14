@@ -54,3 +54,72 @@ body {
 .safe-area-pb {
   padding-bottom: env(safe-area-inset-bottom, 0);
 }
+
+/* Hit shake animation for combat feedback */
+@keyframes hit-shake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  10%, 30%, 50%, 70%, 90% {
+    transform: translateX(-4px);
+  }
+  20%, 40%, 60%, 80% {
+    transform: translateX(4px);
+  }
+}
+
+.animate-hit-shake {
+  animation: hit-shake 0.5s ease-in-out;
+}
+
+/* Critical success glow animation */
+@keyframes critical-success {
+  0%, 100% {
+    text-shadow: 0 0 4px rgba(74, 222, 128, 0.5);
+  }
+  50% {
+    text-shadow: 0 0 16px rgba(74, 222, 128, 0.9), 0 0 32px rgba(74, 222, 128, 0.5);
+  }
+}
+
+.animate-critical-success {
+  animation: critical-success 1s ease-in-out 2;
+}
+
+/* Critical failure shake and glow animation */
+@keyframes critical-failure {
+  0%, 100% {
+    transform: translateX(0);
+    text-shadow: 0 0 4px rgba(248, 113, 113, 0.5);
+  }
+  10%, 30%, 50%, 70%, 90% {
+    transform: translateX(-2px);
+  }
+  20%, 40%, 60%, 80% {
+    transform: translateX(2px);
+  }
+  50% {
+    text-shadow: 0 0 16px rgba(248, 113, 113, 0.9), 0 0 32px rgba(248, 113, 113, 0.5);
+  }
+}
+
+.animate-critical-failure {
+  animation: critical-failure 0.8s ease-in-out 2;
+  display: inline-block;
+}
+
+/* Tooltip fade in animation */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.15s ease-out;
+}

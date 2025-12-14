@@ -24,10 +24,13 @@ export function formatDiceResult(result: DiceResult['result']): string {
 export function getDiceResultClassName(result: DiceResult['result']): string {
   switch (result) {
     case 'critical_success':
+      return 'text-green-400 font-bold animate-critical-success';
     case 'success':
       return 'text-green-400';
     case 'critical_failure':
-      return 'text-red-400';
+      return 'text-red-400 font-bold animate-critical-failure';
+    case 'failure':
+      return 'text-gray-400';
     default:
       return 'text-gray-400';
   }

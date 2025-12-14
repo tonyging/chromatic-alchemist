@@ -442,7 +442,7 @@ export default function GamePage() {
           {/* 戰鬥訊息 log */}
           <div
             ref={logContainerRef}
-            className="flex-1 overflow-y-auto p-4 lg:p-6 space-y-3 cursor-pointer"
+            className="flex-1 overflow-y-auto p-4 lg:p-6 space-y-3 cursor-pointer custom-scrollbar"
             onClick={handleLogClick}
           >
             {combatLog.length === 0 && !typingEntry && !inCombat ? (
@@ -499,7 +499,7 @@ export default function GamePage() {
         {/* 右側：物品欄 + 選項（延伸到底） */}
         <aside className="w-52 lg:w-56 bg-gray-800 border-l border-gray-700 shrink-0 flex flex-col">
           {/* 物品欄 */}
-          <div className="flex-1 p-3 overflow-y-auto">
+          <div className="flex-1 p-3 overflow-y-auto custom-scrollbar">
             <h3 className="text-sm font-semibold text-gray-300 mb-2">物品欄</h3>
             <div className="text-xs">
               {!gameState?.player?.inventory || gameState.player.inventory.length === 0 ? (
@@ -724,7 +724,7 @@ export default function GamePage() {
         {/* 中間主區域：戰鬥 log */}
         <div
           ref={mobileLogContainerRef}
-          className="flex-1 overflow-y-auto p-3 space-y-2 cursor-pointer relative"
+          className="flex-1 overflow-y-auto p-3 space-y-2 cursor-pointer relative custom-scrollbar"
           onClick={handleLogClick}
         >
           {/* 首次戰鬥加速提示氣泡 */}

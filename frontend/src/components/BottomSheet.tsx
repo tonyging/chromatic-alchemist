@@ -100,7 +100,7 @@ export default function BottomSheet({ isOpen, onClose, title, children }: Bottom
           </div>
         </div>
         {/* 內容 */}
-        <div className="flex-1 overflow-y-auto p-3">
+        <div className="flex-1 overflow-y-auto p-3 custom-scrollbar">
           {children}
         </div>
       </div>

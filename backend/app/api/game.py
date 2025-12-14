@@ -264,6 +264,20 @@ async def perform_action(
                 player["hp"] = max(0, player.get("hp", 0) - action_result.state_changes["damage"])
                 updated_state["player"] = player
 
+        # Apply direct player_hp change (from combat or item use)
+        if "player_hp" in action_result.state_changes:
+            player = updated_state.get("player", {})
+            if player:
+                player["hp"] = action_result.state_changes["player_hp"]
+                updated_state["player"] = player
+
+        # Apply direct player_mp change (from item use)
+        if "player_mp" in action_result.state_changes:
+            player = updated_state.get("player", {})
+            if player:
+                player["mp"] = action_result.state_changes["player_mp"]
+                updated_state["player"] = player
+
         # Apply item additions
         if "add_item" in action_result.state_changes:
             item = action_result.state_changes["add_item"]
@@ -273,6 +287,33 @@ async def perform_action(
                 inventory.append(item)
                 player["inventory"] = inventory
                 updated_state["player"] = player
+
+        # Apply combat drops
+        if "drops" in action_result.state_changes:
+            drops = action_result.state_changes["drops"]
+            player = updated_state.get("player", {})
+            if player:
+                inventory = player.get("inventory", [])
+                for drop in drops:
+                    inventory.append(drop)
+                player["inventory"] = inventory
+                updated_state["player"] = player
+
+        # Apply gold gained
+        if "gold_gained" in action_result.state_changes:
+            player = updated_state.get("player", {})
+            if player:
+                player["gold"] = player.get("gold", 0) + action_result.state_changes["gold_gained"]
+                updated_state["player"] = player
+
+        # Update combat state (persist or clear)
+        if "combat" in action_result.state_changes:
+            updated_state["combat"] = action_result.state_changes["combat"]
+
+        # Sync inventory changes from engine state
+        if "inventory_changed" in action_result.state_changes:
+            # engine.state.player.inventory was modified directly
+            updated_state["player"]["inventory"] = engine.state.get("player", {}).get("inventory", [])
 
         save.game_state = updated_state
         flag_modified(save, "game_state")
@@ -285,6 +326,7 @@ async def perform_action(
         game_state=None,  # Send full state updates separately if needed
         available_actions=action_result.available_actions,
         dice_result=action_result.dice_result,
+        state_changes=action_result.state_changes,
         scene_type=action_result.scene_type,
         combat_info=action_result.combat_info,
     )

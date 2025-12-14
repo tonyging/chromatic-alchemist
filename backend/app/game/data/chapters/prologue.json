@@ -236,6 +236,7 @@
         "這是被暗影能量污染的生物，體型如貓，全身漆黑。"
       ],
       "combat_info": {
+        "enemy_id": "shadow_bug",
         "enemy_name": "暗影蟲",
         "enemy_hp": 15,
         "enemy_max_hp": 15,
@@ -244,6 +245,7 @@
         "enemy_weakness": "任何光系攻擊傷害 +2",
         "tutorial_text": "這是你的第一場戰鬥。準備好了嗎？"
       },
+      "post_combat_scene": "post_combat",
       "actions": [
         {
           "id": "attack_melee",
@@ -264,8 +266,6 @@
       "narrative": [
         "暗影蟲發出淒厲的叫聲，化為一縷黑煙消散。",
         "地上留下了一小堆暗色結晶。",
-        "",
-        "獲得：暗影碎片 ×1",
         "",
         "戰鬥結束後，你檢視了一下自己的狀態。",
         "還好，只是些皮肉傷。"

@@ -67,6 +67,7 @@ class ActionResponse(BaseModel):
     game_state: Optional[GameStateSchema] = None
     available_actions: list[dict[str, Any]]
     dice_result: Optional[dict[str, Any]] = None
+    state_changes: Optional[dict[str, Any]] = None  # HP/MP/inventory changes
     scene_type: Optional[str] = None  # "narrative", "combat", etc.
     combat_info: Optional[dict[str, Any]] = None  # Enemy info for combat scenes
 

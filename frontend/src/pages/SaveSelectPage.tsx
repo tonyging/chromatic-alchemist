@@ -35,9 +35,14 @@ export default function SaveSelectPage() {
     setSelectedIsEmpty(isEmpty);
   };
 
-  const handleNewGame = () => {
-    if (!selectedSlot) return;
-    navigate('/create', { state: { slot: selectedSlot } });
+  const handleNewGame = (overwrite = false) => {
+    console.log('handleNewGame called:', { selectedSlot, overwrite });
+    if (!selectedSlot) {
+      console.log('handleNewGame blocked: no selectedSlot');
+      return;
+    }
+    console.log('Navigating to /create with slot:', selectedSlot);
+    navigate('/create', { state: { slot: selectedSlot, overwrite } });
   };
 
   const handleLoad = async () => {
@@ -124,7 +129,7 @@ export default function SaveSelectPage() {
             {selectedIsEmpty ? (
               /* Empty slot - New Game only */
               <button
-                onClick={handleNewGame}
+                onClick={() => handleNewGame(false)}
                 className="w-full py-3 bg-amber-600 hover:bg-amber-500
                            text-white font-semibold rounded transition-colors"
               >
@@ -150,7 +155,7 @@ export default function SaveSelectPage() {
                   刪除存檔
                 </button>
                 <button
-                  onClick={handleNewGame}
+                  onClick={() => handleNewGame(true)}
                   className="w-full py-2 text-gray-400 hover:text-white"
                 >
                   覆蓋為新遊戲

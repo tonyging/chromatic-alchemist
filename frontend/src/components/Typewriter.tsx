@@ -75,34 +75,36 @@ export default function Typewriter({ texts, speed = 25, onComplete }: Typewriter
   return (
     <div
       onClick={handleClick}
-      className="cursor-pointer select-none flex items-center justify-center w-full"
+      className="cursor-pointer select-none w-full h-full"
     >
-      <div className="w-[672px] bg-gray-800/80 border border-gray-600 rounded-lg p-6 shadow-lg flex flex-col">
+      <div className="w-full h-full flex flex-col justify-between py-2 px-4">
         {/* 文字區 */}
-        <div className="min-h-[80px] flex items-center">
-          <p className="text-gray-100 text-lg leading-relaxed">
+        <div className="flex-1 flex items-center">
+          <p className="text-gray-100 leading-relaxed">
             {displayText}
             {!isTypingDone && <span className="animate-pulse text-amber-400">▌</span>}
           </p>
         </div>
 
-        {/* 提示區 - 固定高度，用 opacity 控制顯示 */}
-        <p className={`text-gray-500 text-sm text-right transition-opacity duration-200 ${
-          isTypingDone ? 'opacity-100' : 'opacity-0'
-        }`}>
-          [ 點擊或按 Enter 繼續 ]
-        </p>
-
-        {/* 進度指示 */}
-        <div className="flex justify-center gap-1 mt-3">
-          {validTexts.map((_, i) => (
-            <div
-              key={i}
-              className={`w-2 h-2 rounded-full transition-colors ${
-                i === currentIndex ? 'bg-amber-400' : i < currentIndex ? 'bg-gray-500' : 'bg-gray-700'
-              }`}
-            />
-          ))}
+        {/* 底部：進度 + 提示 */}
+        <div className="flex items-center justify-between">
+          {/* 進度指示 */}
+          <div className="flex gap-1">
+            {validTexts.map((_, i) => (
+              <div
+                key={i}
+                className={`w-1.5 h-1.5 rounded-full transition-colors ${
+                  i === currentIndex ? 'bg-amber-400' : i < currentIndex ? 'bg-gray-500' : 'bg-gray-700'
+                }`}
+              />
+            ))}
+          </div>
+          {/* 提示區 */}
+          <p className={`text-gray-500 text-xs transition-opacity duration-200 ${
+            isTypingDone ? 'opacity-100' : 'opacity-0'
+          }`}>
+            [ 點擊或按 Enter 繼續 ]
+          </p>
         </div>
       </div>
     </div>

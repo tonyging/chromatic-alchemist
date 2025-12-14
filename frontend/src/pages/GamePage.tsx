@@ -2,16 +2,40 @@ import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import Typewriter from '../components/Typewriter';
-import CombatPanel from '../components/CombatPanel';
 import ConfirmDialog from '../components/ConfirmDialog';
+import GameOverPanel from '../components/GameOverPanel';
+
+interface DiceResult {
+  roll: number;
+  target: number;
+  result: string;
+}
+
+interface LogEntry {
+  id: number;
+  type: 'combat' | 'dice' | 'result' | 'system';
+  content: string[];
+  diceResult?: DiceResult;
+}
 
 export default function GamePage() {
-  const { gameState, narrative, availableActions, sendAction, exitGame, isLoading, currentSlot, sceneType, combatInfo } = useGame();
+  const { gameState, narrative, availableActions, sendAction, exitGame, loadGame, isLoading, currentSlot, sceneType, combatInfo } = useGame();
   const navigate = useNavigate();
   const [isReading, setIsReading] = useState(false);
   const [pendingNarrative, setPendingNarrative] = useState<string[]>([]);
   const lastNarrativeLength = useRef(0);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
+  const [lastDiceResult, setLastDiceResult] = useState<DiceResult | null>(null);
+  const [isGameOver, setIsGameOver] = useState(false);
+
+  // 中間主視覺區的累積訊息 log
+  const [combatLog, setCombatLog] = useState<LogEntry[]>([]);
+  const logIdRef = useRef(0);
+  const logEndRef = useRef<HTMLDivElement>(null);
+
+  // 受擊特效狀態
+  const [enemyHit, setEnemyHit] = useState(false);
+  const [playerHit, setPlayerHit] = useState(false);
 
   // Redirect if no active game
   useEffect(() => {
@@ -20,15 +44,50 @@ export default function GamePage() {
     }
   }, [currentSlot, navigate]);
 
+  // 判斷文字是否為純劇情（不含戰鬥/系統訊息）
+  const isNarrativeText = (texts: string[]): boolean => {
+    const systemPatterns = [
+      '獲得', '失去', '傷害', 'HP', 'MP', '經驗', '金幣',
+      '【', '】', '攻擊', '防禦', '迴避', '命中', '擲骰'
+    ];
+    return !texts.some(text =>
+      systemPatterns.some(pattern => text.includes(pattern))
+    );
+  };
+
   // 偵測新敘事
   useEffect(() => {
     if (narrative.length > lastNarrativeLength.current) {
       const newTexts = narrative.slice(lastNarrativeLength.current);
-      setPendingNarrative(newTexts);
-      setIsReading(true);
       lastNarrativeLength.current = narrative.length;
+
+      // 判斷：戰鬥中 或 含有系統訊息 → 主視覺區，否則 → 對話框
+      const shouldGoToLog = sceneType === 'combat' || !isNarrativeText(newTexts);
+
+      if (shouldGoToLog) {
+        // 加入主視覺區 log
+        const entry: LogEntry = {
+          id: logIdRef.current++,
+          type: sceneType === 'combat' ? 'combat' : 'system',
+          content: newTexts,
+          diceResult: lastDiceResult || undefined,
+        };
+        setCombatLog(prev => [...prev, entry]);
+        setLastDiceResult(null);
+      } else {
+        // 純劇情用 Typewriter
+        setPendingNarrative(newTexts);
+        setIsReading(true);
+      }
     }
-  }, [narrative]);
+  }, [narrative, sceneType, lastDiceResult]);
+
+  // 滾動到 log 底部
+  useEffect(() => {
+    if (combatLog.length > 0 && logEndRef.current) {
+      logEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }
+  }, [combatLog]);
 
   const handleReadingComplete = () => {
     setPendingNarrative([]);
@@ -45,12 +104,49 @@ export default function GamePage() {
     navigate('/');
   };
 
+  const handleGameOverRestart = async () => {
+    if (!currentSlot) return;
+    setIsGameOver(false);
+    setIsReading(false);
+    setPendingNarrative([]);
+    setCombatLog([]);
+    lastNarrativeLength.current = 0;
+    await loadGame(currentSlot);
+  };
+
+  const handleGameOverMenu = () => {
+    setIsGameOver(false);
+    exitGame();
+    navigate('/');
+  };
+
   const handleAction = async (action: { id: string; type: string; label: string; data?: Record<string, unknown> }) => {
     try {
-      await sendAction({
+      const response = await sendAction({
         action_type: action.type,
         action_data: action.data || { choice_id: action.id }
       });
+      // 儲存骰子結果
+      if (response.dice_result) {
+        setLastDiceResult(response.dice_result as DiceResult);
+      }
+      // 敵人受擊特效（玩家攻擊成功時）
+      if (action.type === 'attack' && response.dice_result?.result === 'success') {
+        setEnemyHit(true);
+        setTimeout(() => setEnemyHit(false), 300);
+      }
+      // 玩家受擊特效（HP 減少時）
+      if (response.state_changes?.player_hp !== undefined &&
+          gameState?.player?.hp !== undefined &&
+          response.state_changes.player_hp < gameState.player.hp) {
+        setPlayerHit(true);
+        setTimeout(() => setPlayerHit(false), 300);
+      }
+      // 檢查 Game Over
+      if (response.state_changes?.player_hp !== undefined &&
+          response.state_changes.player_hp <= 0) {
+        setIsGameOver(true);
+      }
     } catch (error) {
       console.error('Action failed:', error);
     }
@@ -61,166 +157,423 @@ export default function GamePage() {
     return null;
   }
 
+  const inCombat = sceneType === 'combat' && combatInfo;
+
   return (
-    <div className="h-screen bg-gray-900 text-white flex overflow-hidden">
-      {/* Sidebar - Player Status */}
-      <aside className="w-64 bg-gray-800 p-4 flex flex-col flex-shrink-0">
-        {gameState?.player ? (
-          <>
-            <h2 className="text-xl font-bold text-amber-400 mb-4">
-              {gameState.player.name}
-            </h2>
-
-            {/* HP/MP Bars */}
-            <div className="space-y-2 mb-4">
-              <div>
-                <div className="flex justify-between text-sm text-gray-400 mb-1">
-                  <span>HP</span>
-                  <span>{gameState.player.hp}/{gameState.player.max_hp}</span>
+    <div className="h-screen bg-gray-900 text-white flex flex-col overflow-hidden">
+      {/* ===== 電腦版 (md 以上) ===== */}
+      <div className="hidden md:flex flex-1 min-h-0">
+        {/* 左側面板（延伸到底） */}
+        <aside className="w-56 lg:w-64 bg-gray-800 flex flex-col shrink-0 border-r border-gray-700">
+          {/* 左上：敵人資訊（戰鬥時顯示） */}
+          <div className="p-3 lg:p-4 border-b border-gray-700 min-h-[160px]">
+            {inCombat ? (
+              <div className={`border rounded-lg p-2 lg:p-3 transition-all duration-150 ${
+                enemyHit
+                  ? 'bg-red-600/60 border-red-400 animate-pulse'
+                  : combatInfo.enemy_hp <= 0
+                    ? 'bg-gray-800/30 border-gray-600'
+                    : 'bg-red-900/30 border-red-700'
+              }`}>
+                <h3 className={`font-bold text-sm lg:text-base mb-2 ${combatInfo.enemy_hp <= 0 ? 'text-gray-500 line-through' : 'text-red-400'}`}>
+                  {combatInfo.enemy_name}
+                </h3>
+                {/* HP 條 */}
+                <div className="mb-2">
+                  <div className="flex justify-between text-xs text-gray-400 mb-1">
+                    <span>HP</span>
+                    <span>{Math.max(0, combatInfo.enemy_hp)}/{combatInfo.enemy_max_hp}</span>
+                  </div>
+                  <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full transition-all duration-500 ${combatInfo.enemy_hp <= 0 ? 'bg-gray-500' : 'bg-red-500'}`}
+                      style={{ width: `${Math.max(0, (combatInfo.enemy_hp / combatInfo.enemy_max_hp) * 100)}%` }}
+                    />
+                  </div>
                 </div>
-                <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-red-500 transition-all"
-                    style={{ width: `${(gameState.player.hp / gameState.player.max_hp) * 100}%` }}
-                  />
+                {/* 敵人能力 */}
+                <div className="text-xs space-y-1">
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">迴避</span>
+                    <span className="text-gray-300">{combatInfo.enemy_evasion}%</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">弱點</span>
+                    <span className="text-amber-400">{combatInfo.enemy_weakness}</span>
+                  </div>
                 </div>
               </div>
-              <div>
-                <div className="flex justify-between text-sm text-gray-400 mb-1">
-                  <span>MP</span>
-                  <span>{gameState.player.mp}/{gameState.player.max_mp}</span>
-                </div>
-                <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-blue-500 transition-all"
-                    style={{ width: `${(gameState.player.mp / gameState.player.max_mp) * 100}%` }}
-                  />
-                </div>
+            ) : (
+              <div className="text-gray-600 text-sm text-center py-6">
+                — 無敵人 —
               </div>
-            </div>
-
-            {/* Stats */}
-            <div className="grid grid-cols-2 gap-2 text-sm mb-4">
-              <div className="bg-gray-700/50 p-2 rounded">
-                <span className="text-gray-400">力量</span>
-                <span className="float-right">{gameState.player.stats.strength}</span>
-              </div>
-              <div className="bg-gray-700/50 p-2 rounded">
-                <span className="text-gray-400">敏捷</span>
-                <span className="float-right">{gameState.player.stats.dexterity}</span>
-              </div>
-              <div className="bg-gray-700/50 p-2 rounded">
-                <span className="text-gray-400">智力</span>
-                <span className="float-right">{gameState.player.stats.intelligence}</span>
-              </div>
-              <div className="bg-gray-700/50 p-2 rounded">
-                <span className="text-gray-400">感知</span>
-                <span className="float-right">{gameState.player.stats.perception}</span>
-              </div>
-            </div>
-
-            {/* Gold */}
-            <div className="bg-amber-900/30 p-2 rounded text-center mb-4">
-              <span className="text-amber-400">{gameState.player.gold} G</span>
-            </div>
-          </>
-        ) : (
-          <div className="text-gray-500 text-center py-8">
-            載入中...
+            )}
           </div>
-        )}
 
-        {/* Exit Button */}
-        <button
-          onClick={handleExit}
-          className="mt-auto py-2 bg-gray-700 hover:bg-gray-600 rounded text-gray-300"
-        >
-          離開遊戲
-        </button>
-      </aside>
+          {/* 左下：角色狀態 */}
+          <div className={`flex-1 p-3 lg:p-4 flex flex-col transition-all duration-150 ${
+            playerHit ? 'bg-red-900/40' : ''
+          }`}>
+            {gameState?.player ? (
+              <>
+                <h2 className={`text-base lg:text-lg font-bold mb-2 transition-colors ${
+                  playerHit ? 'text-red-400' : 'text-amber-400'
+                }`}>
+                  {gameState.player.name}
+                </h2>
 
-      {/* Main Content */}
-      <main className="flex-1 flex flex-col min-h-0">
-        {/* 對話框 / 選項區 */}
-        <div className="flex-1 flex flex-col items-center justify-center p-6">
-          {isLoading ? (
-            <p className="text-gray-500 animate-pulse text-xl">...</p>
-          ) : sceneType === 'combat' && combatInfo ? (
-            /* 戰鬥場景 */
+                {/* HP/MP Bars */}
+                <div className="space-y-2 mb-3">
+                  <div>
+                    <div className="flex justify-between text-xs text-gray-400 mb-1">
+                      <span>HP</span>
+                      <span>{gameState.player.hp}/{gameState.player.max_hp}</span>
+                    </div>
+                    <div className={`h-2 bg-gray-700 rounded-full overflow-hidden ${
+                      playerHit ? 'animate-pulse' : ''
+                    }`}>
+                      <div
+                        className="h-full bg-red-500 transition-all"
+                        style={{ width: `${(gameState.player.hp / gameState.player.max_hp) * 100}%` }}
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <div className="flex justify-between text-xs text-gray-400 mb-1">
+                      <span>MP</span>
+                      <span>{gameState.player.mp}/{gameState.player.max_mp}</span>
+                    </div>
+                    <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-blue-500 transition-all"
+                        style={{ width: `${(gameState.player.mp / gameState.player.max_mp) * 100}%` }}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Stats */}
+                <div className="grid grid-cols-2 gap-1 text-xs mb-2">
+                  <div className="bg-gray-700/50 p-1.5 rounded">
+                    <span className="text-gray-400">力</span>
+                    <span className="float-right">{gameState.player.stats.strength}</span>
+                  </div>
+                  <div className="bg-gray-700/50 p-1.5 rounded">
+                    <span className="text-gray-400">敏</span>
+                    <span className="float-right">{gameState.player.stats.dexterity}</span>
+                  </div>
+                  <div className="bg-gray-700/50 p-1.5 rounded">
+                    <span className="text-gray-400">智</span>
+                    <span className="float-right">{gameState.player.stats.intelligence}</span>
+                  </div>
+                  <div className="bg-gray-700/50 p-1.5 rounded">
+                    <span className="text-gray-400">感</span>
+                    <span className="float-right">{gameState.player.stats.perception}</span>
+                  </div>
+                </div>
+
+                {/* Gold */}
+                <div className="bg-amber-900/30 p-1.5 rounded text-center text-sm">
+                  <span className="text-amber-400">{gameState.player.gold} G</span>
+                </div>
+              </>
+            ) : (
+              <div className="text-gray-500 text-center py-4">載入中...</div>
+            )}
+
+            {/* Exit Button */}
+            <button
+              onClick={handleExit}
+              className="mt-auto py-2 bg-gray-700 hover:bg-gray-600 rounded text-gray-300 text-sm"
+            >
+              離開遊戲
+            </button>
+          </div>
+        </aside>
+
+        {/* 中間主視覺區：累積訊息 + 底部對話框 */}
+        <main className="flex-1 flex flex-col min-h-0">
+          {/* 戰鬥訊息 log */}
+          <div className="flex-1 overflow-y-auto p-4 lg:p-6 space-y-3">
+            {combatLog.length === 0 && !inCombat ? (
+              <div className="h-full flex items-center justify-center">
+                <p className="text-gray-600 text-center">
+                  {narrative.length === 0 ? '冒險即將開始...' : ''}
+                </p>
+              </div>
+            ) : (
+              <>
+                {combatLog.map((entry) => (
+                  <div key={entry.id} className="space-y-1">
+                    {/* 骰子結果（純文字） */}
+                    {entry.diceResult && (
+                      <p className={`text-sm ${
+                        entry.diceResult.result === 'success' || entry.diceResult.result === 'critical_success'
+                          ? 'text-green-400'
+                          : entry.diceResult.result === 'critical_failure'
+                            ? 'text-red-400'
+                            : 'text-gray-400'
+                      }`}>
+                        擲骰 {entry.diceResult.roll}/{entry.diceResult.target} — {
+                          entry.diceResult.result === 'success' ? '成功' :
+                          entry.diceResult.result === 'critical_success' ? '大成功！' :
+                          entry.diceResult.result === 'failure' ? '失敗' : '大失敗...'
+                        }
+                      </p>
+                    )}
+                    {/* 訊息內容 */}
+                    {entry.content.map((text, i) => (
+                      <p
+                        key={i}
+                        className={`leading-relaxed text-sm ${
+                          text === '' ? 'h-2' :
+                          text.startsWith('【') ? 'text-amber-400 font-semibold' :
+                          text.includes('傷害') ? 'text-red-300' :
+                          text.includes('HP:') ? 'text-gray-500 text-xs' :
+                          text.includes('獲得') ? 'text-green-400' :
+                          'text-gray-200'
+                        }`}
+                      >
+                        {text || '\u00A0'}
+                      </p>
+                    ))}
+                  </div>
+                ))}
+                {/* 捲動錨點 */}
+                <div ref={logEndRef} />
+              </>
+            )}
+          </div>
+
+          {/* 教學提示 */}
+          {inCombat && combatInfo.tutorial_text && combatInfo.enemy_hp > 0 && (
+            <div className="px-4 pb-2">
+              <div className="bg-amber-900/30 border border-amber-700 rounded-lg p-2">
+                <p className="text-amber-300 text-xs">{combatInfo.tutorial_text}</p>
+              </div>
+            </div>
+          )}
+
+          {/* 底部對話框（在中間區域內） */}
+          <div className="h-28 lg:h-32 bg-gray-800 border-t border-gray-700 p-3 shrink-0">
+            <div className="h-full flex items-center justify-center">
+              {isLoading ? (
+                <p className="text-gray-500 animate-pulse">...</p>
+              ) : isReading && pendingNarrative.length > 0 ? (
+                <Typewriter
+                  texts={pendingNarrative}
+                  speed={50}
+                  onComplete={handleReadingComplete}
+                />
+              ) : !inCombat && availableActions.length === 0 && narrative.length > 0 ? (
+                <p className="text-gray-500 text-center">[ 章節結束 ]</p>
+              ) : !inCombat && narrative.length === 0 ? (
+                <p className="text-gray-500 text-center">冒險即將開始...</p>
+              ) : (
+                <p className="text-gray-600 text-sm">— 等待行動 —</p>
+              )}
+            </div>
+          </div>
+        </main>
+
+        {/* 右側：物品欄 + 選項（延伸到底） */}
+        <aside className="w-48 lg:w-56 bg-gray-800 border-l border-gray-700 shrink-0 flex flex-col">
+          {/* 物品欄 */}
+          <div className="flex-1 p-3 overflow-y-auto">
+            <h3 className="text-sm font-semibold text-gray-300 mb-2">物品欄</h3>
+            <div className="text-xs">
+              {!gameState?.player?.inventory || gameState.player.inventory.length === 0 ? (
+                <p className="text-gray-500">空無一物</p>
+              ) : (
+                <ul className="space-y-1">
+                  {gameState.player.inventory.map((item, i) => {
+                    const isConsumable = item.type === 'consumable' || item.type === 'potion';
+                    return (
+                      <li key={i}>
+                        {isConsumable ? (
+                          <button
+                            onClick={() => handleAction({
+                              id: `use_${item.id}`,
+                              type: 'use_item',
+                              label: item.name,
+                              data: { item_id: item.id }
+                            })}
+                            disabled={isLoading}
+                            className="w-full flex justify-between items-center p-1.5 rounded
+                                       bg-gray-700/50 hover:bg-gray-600/50 transition-colors
+                                       text-left disabled:opacity-50"
+                          >
+                            <span className="text-green-400 truncate">{item.name}</span>
+                            <span className="text-gray-500 ml-1">x{item.quantity}</span>
+                          </button>
+                        ) : (
+                          <div className="flex justify-between p-1.5 text-gray-400">
+                            <span className="truncate">{item.name}</span>
+                            <span className="text-gray-600 ml-1">x{item.quantity}</span>
+                          </div>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+          </div>
+
+          {/* 選項區（右側下方） */}
+          {!isReading && availableActions.length > 0 && (
+            <div className="p-3 border-t border-gray-700 bg-gray-800/80">
+              <div className="space-y-1.5">
+                {availableActions.map((action) => (
+                  <button
+                    key={action.id}
+                    onClick={() => handleAction(action)}
+                    disabled={isLoading}
+                    className={`w-full py-2 px-3 rounded-lg transition-all text-xs ${
+                      inCombat
+                        ? 'bg-red-900/50 hover:bg-red-800/60 border border-red-700 hover:border-red-500'
+                        : 'bg-gray-700 hover:bg-gray-600 border border-gray-600 hover:border-amber-500'
+                    }`}
+                  >
+                    <span className="text-gray-100">{action.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </aside>
+      </div>
+
+      {/* ===== 手機版 (md 以下) ===== */}
+      <div className="flex md:hidden flex-col flex-1 min-h-0">
+        {/* 頂部狀態列：角色 HP/MP + 敵人（戰鬥時） */}
+        <div className="bg-gray-800 p-2 border-b border-gray-700">
+          <div className="flex items-center gap-3">
+            {/* 角色狀態 */}
+            {gameState?.player && (
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-amber-400 font-bold text-sm truncate">{gameState.player.name}</span>
+                  <span className="text-amber-400/60 text-xs">{gameState.player.gold}G</span>
+                </div>
+                <div className="flex gap-2">
+                  <div className="flex-1">
+                    <div className="h-1.5 bg-gray-700 rounded-full overflow-hidden">
+                      <div className="h-full bg-red-500" style={{ width: `${(gameState.player.hp / gameState.player.max_hp) * 100}%` }} />
+                    </div>
+                    <span className="text-xs text-gray-500">{gameState.player.hp}/{gameState.player.max_hp}</span>
+                  </div>
+                  <div className="flex-1">
+                    <div className="h-1.5 bg-gray-700 rounded-full overflow-hidden">
+                      <div className="h-full bg-blue-500" style={{ width: `${(gameState.player.mp / gameState.player.max_mp) * 100}%` }} />
+                    </div>
+                    <span className="text-xs text-gray-500">{gameState.player.mp}/{gameState.player.max_mp}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+            {/* 敵人狀態（戰鬥時） */}
+            {inCombat && (
+              <div className="w-28 bg-red-900/30 rounded p-1.5">
+                <div className="text-xs text-red-400 font-bold truncate">{combatInfo.enemy_name}</div>
+                <div className="h-1.5 bg-gray-700 rounded-full overflow-hidden mt-1">
+                  <div className="h-full bg-red-500" style={{ width: `${Math.max(0, (combatInfo.enemy_hp / combatInfo.enemy_max_hp) * 100)}%` }} />
+                </div>
+              </div>
+            )}
+            {/* 選單按鈕 */}
+            <button onClick={handleExit} className="p-2 text-gray-400 hover:text-white">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        {/* 中間主區域：戰鬥 log */}
+        <div className="flex-1 overflow-y-auto p-3 space-y-2">
+          {combatLog.length === 0 && !inCombat ? (
+            <div className="h-full flex items-center justify-center">
+              <p className="text-gray-600 text-center text-sm">
+                {narrative.length === 0 ? '冒險即將開始...' : ''}
+              </p>
+            </div>
+          ) : (
             <>
-              <CombatPanel
-                combatInfo={combatInfo}
-                narrative={pendingNarrative}
-                onContinue={handleReadingComplete}
-              />
-              {/* 戰鬥選項 */}
-              {!isReading && availableActions.length > 0 && (
-                <div className="w-[672px] space-y-2 mt-4">
-                  {availableActions.map((action) => (
-                    <button
-                      key={action.id}
-                      onClick={() => handleAction(action)}
-                      disabled={isLoading}
-                      className="w-full py-3 px-6 bg-red-900/50 hover:bg-red-800/60
-                                 text-left rounded-lg transition-all
-                                 border border-red-700 hover:border-red-500"
-                    >
-                      <span className="text-gray-100">{action.label}</span>
-                    </button>
+              {combatLog.map((entry) => (
+                <div key={entry.id} className="space-y-0.5">
+                  {/* 骰子結果（純文字） */}
+                  {entry.diceResult && (
+                    <p className={`text-xs ${
+                      entry.diceResult.result === 'success' || entry.diceResult.result === 'critical_success'
+                        ? 'text-green-400'
+                        : entry.diceResult.result === 'critical_failure'
+                          ? 'text-red-400'
+                          : 'text-gray-400'
+                    }`}>
+                      擲骰 {entry.diceResult.roll}/{entry.diceResult.target} — {
+                        entry.diceResult.result === 'success' ? '成功' :
+                        entry.diceResult.result === 'critical_success' ? '大成功！' :
+                        entry.diceResult.result === 'failure' ? '失敗' : '大失敗...'
+                      }
+                    </p>
+                  )}
+                  {entry.content.map((text, i) => (
+                    <p key={i} className={`leading-relaxed text-xs ${
+                      text === '' ? 'h-1' :
+                      text.startsWith('【') ? 'text-amber-400 font-semibold' :
+                      text.includes('傷害') ? 'text-red-300' :
+                      text.includes('獲得') ? 'text-green-400' :
+                      'text-gray-200'
+                    }`}>
+                      {text || '\u00A0'}
+                    </p>
                   ))}
                 </div>
-              )}
+              ))}
+              {/* 捲動錨點 */}
+              <div ref={logEndRef} />
             </>
-          ) : isReading && pendingNarrative.length > 0 ? (
-            /* 一般敘事場景 - Typewriter */
-            <Typewriter
-              texts={pendingNarrative}
-              speed={50}
-              onComplete={handleReadingComplete}
-            />
-          ) : availableActions.length > 0 ? (
-            /* 選項顯示 */
-            <div className="max-w-2xl w-full space-y-3">
+          )}
+        </div>
+
+        {/* 底部對話框（手機版） */}
+        <div className="h-24 bg-gray-800 border-t border-gray-700 p-3">
+          <div className="h-full flex items-center justify-center">
+            {isLoading ? (
+              <p className="text-gray-500 animate-pulse text-sm">...</p>
+            ) : isReading && pendingNarrative.length > 0 ? (
+              <Typewriter texts={pendingNarrative} speed={50} onComplete={handleReadingComplete} />
+            ) : !inCombat && narrative.length === 0 ? (
+              <p className="text-gray-500 text-center text-sm">冒險即將開始...</p>
+            ) : (
+              <p className="text-gray-600 text-xs">— 等待行動 —</p>
+            )}
+          </div>
+        </div>
+
+        {/* 底部選項（手機版固定） */}
+        {!isReading && availableActions.length > 0 && (
+          <div className="bg-gray-800 border-t border-gray-700 p-2 safe-area-pb">
+            <div className="flex flex-wrap gap-1.5 justify-center">
               {availableActions.map((action) => (
                 <button
                   key={action.id}
                   onClick={() => handleAction(action)}
                   disabled={isLoading}
-                  className="w-full py-4 px-6 bg-gray-800/80 hover:bg-gray-700
-                             text-left rounded-lg transition-all
-                             border border-gray-600 hover:border-amber-500
-                             hover:shadow-lg hover:shadow-amber-500/10"
+                  className={`py-2 px-3 rounded-lg transition-all text-xs ${
+                    inCombat
+                      ? 'bg-red-900/50 border border-red-700'
+                      : 'bg-gray-700 border border-gray-600'
+                  }`}
                 >
-                  <span className="text-gray-100 text-lg">{action.label}</span>
+                  <span className="text-gray-100">{action.label}</span>
                 </button>
               ))}
             </div>
-          ) : (
-            <p className="text-gray-500 text-center">
-              {narrative.length === 0 ? '冒險即將開始...' : '[ 章節結束 ]'}
-            </p>
-          )}
-        </div>
-      </main>
-
-      {/* Inventory Panel */}
-      <aside className="w-64 bg-gray-800 p-4 border-l border-gray-700 flex-shrink-0 overflow-y-auto">
-        <h3 className="text-lg font-semibold text-gray-300 mb-4">物品欄</h3>
-        <div className="text-gray-500 text-sm">
-          {!gameState?.player?.inventory || gameState.player.inventory.length === 0 ? (
-            <p>空無一物</p>
-          ) : (
-            <ul className="space-y-1">
-              {gameState.player.inventory.map((item, i) => (
-                <li key={i} className="flex justify-between">
-                  <span>{item.name}</span>
-                  <span className="text-gray-600">x{item.quantity}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      </aside>
+          </div>
+        )}
+      </div>
 
       {/* Exit Confirm Dialog */}
       <ConfirmDialog
@@ -232,6 +585,13 @@ export default function GamePage() {
         onConfirm={confirmExit}
         onCancel={() => setShowExitConfirm(false)}
         variant="warning"
+      />
+
+      {/* Game Over Panel */}
+      <GameOverPanel
+        isOpen={isGameOver}
+        onRestart={handleGameOverRestart}
+        onReturnToMenu={handleGameOverMenu}
       />
     </div>
   );

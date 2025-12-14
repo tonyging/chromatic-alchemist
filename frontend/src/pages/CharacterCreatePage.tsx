@@ -23,9 +23,11 @@ const MAX_STAT = 5;
 export default function CharacterCreatePage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { startNewGame, isLoading } = useGame();
+  const { startNewGame, deleteGame, isLoading } = useGame();
 
-  const slot = (location.state as { slot?: number })?.slot;
+  const locationState = location.state as { slot?: number; overwrite?: boolean } | null;
+  const slot = locationState?.slot;
+  const overwrite = locationState?.overwrite ?? false;
 
   const [characterName, setCharacterName] = useState('');
   const [background, setBackground] = useState<Background>('warrior');
@@ -60,10 +62,27 @@ export default function CharacterCreatePage() {
   const calcHP = () => 20 + getFinalStat('strength') * 2;
   const calcMP = () => 10 + getFinalStat('intelligence') * 2;
 
+  const [error, setError] = useState<string | null>(null);
+
   const handleCreate = async () => {
-    if (!slot || !characterName.trim() || remainingPoints !== 0) return;
-    await startNewGame(slot, characterName.trim(), background, stats);
-    navigate('/game');
+    if (!slot || !characterName.trim() || remainingPoints !== 0) {
+      console.log('handleCreate blocked:', { slot, characterName, remainingPoints });
+      return;
+    }
+
+    setError(null);
+
+    try {
+      // 覆蓋模式：先刪除舊存檔
+      if (overwrite) {
+        await deleteGame(slot);
+      }
+      await startNewGame(slot, characterName.trim(), background, stats);
+      navigate('/game');
+    } catch (err) {
+      console.error('Create game failed:', err);
+      setError('建立角色失敗，請稍後再試');
+    }
   };
 
   if (!slot) {
@@ -186,6 +205,13 @@ export default function CharacterCreatePage() {
               </div>
             </div>
           </div>
+
+          {/* Error Message */}
+          {error && (
+            <div className="p-3 bg-red-900/50 border border-red-500 rounded-lg text-red-300 text-sm">
+              {error}
+            </div>
+          )}
 
           {/* Create Button */}
           <button

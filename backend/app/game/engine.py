@@ -5,6 +5,8 @@ from typing import Any, Optional
 from dataclasses import dataclass
 
 from app.game.dice import check, DifficultyModifier, DiceResult
+from app.game.combat import combat_system, AttackType, CombatState
+from app.game.inventory import inventory_system
 
 
 DATA_PATH = Path(__file__).parent / "data"
@@ -29,7 +31,9 @@ class GameEngine:
     def __init__(self, game_state: dict):
         self.state = game_state
         self._scenes: dict[str, dict] = {}
+        self._combat_state: Optional[CombatState] = None
         self._load_chapter_data()
+        self._init_combat_if_needed()
 
     def _load_chapter_data(self) -> None:
         """Load chapter data from JSON files."""
@@ -40,6 +44,32 @@ class GameEngine:
             with open(chapter_file, "r", encoding="utf-8") as f:
                 data = json.load(f)
                 self._scenes = data.get("scenes", {})
+
+    def _init_combat_if_needed(self) -> None:
+        """Initialize or restore combat state if current scene is combat."""
+        scene = self.get_current_scene()
+        if scene.get("type") == "combat":
+            # Check if combat state already exists in game_state
+            saved_combat = self.state.get("combat")
+            if saved_combat:
+                # Restore from saved state
+                self._combat_state = CombatState(
+                    enemy_id=saved_combat["enemy_id"],
+                    enemy_name=saved_combat["enemy_name"],
+                    enemy_hp=saved_combat["enemy_hp"],
+                    enemy_max_hp=saved_combat["enemy_max_hp"],
+                    enemy_evasion=saved_combat["enemy_evasion"],
+                    enemy_armor=saved_combat.get("enemy_armor", 0),
+                    turn=saved_combat.get("turn", 1),
+                    is_active=saved_combat.get("is_active", True),
+                    player_hp=saved_combat.get("player_hp", self.state.get("player", {}).get("hp", 20)),
+                    player_max_hp=saved_combat.get("player_max_hp", self.state.get("player", {}).get("max_hp", 20)),
+                )
+            else:
+                # Initialize new combat
+                combat_info = scene.get("combat_info", {})
+                enemy_id = combat_info.get("enemy_id", "shadow_bug")
+                self._combat_state = combat_system.init_combat(enemy_id, self.state)
 
     def get_current_scene(self) -> dict:
         """Get the current scene data."""
@@ -68,6 +98,7 @@ class GameEngine:
             "attack": self._handle_attack,
             "use_item": self._handle_use_item,
             "continue": self._handle_continue,
+            "cancel": self._handle_cancel,
         }
 
         handler = handlers.get(action_type, self._handle_unknown)
@@ -210,25 +241,369 @@ class GameEngine:
 
     def _handle_attack(self, data: dict) -> ActionResult:
         """Handle combat attack action."""
-        # Placeholder for combat system
+        # Initialize combat if not already
+        if not self._combat_state:
+            scene = self.get_current_scene()
+            combat_info = scene.get("combat_info", {})
+            enemy_id = data.get("enemy_id", combat_info.get("enemy_id", "shadow_bug"))
+            self._combat_state = combat_system.init_combat(enemy_id, self.state)
+
+        if not self._combat_state:
+            return ActionResult(
+                success=False,
+                message="無法開始戰鬥",
+                narrative=["找不到敵人資料。"],
+                state_changes={},
+                available_actions=self._get_available_actions(),
+            )
+
+        # Determine attack type
+        attack_type_str = data.get("attack_type", "melee")
+        attack_type_map = {
+            "melee": AttackType.MELEE,
+            "ranged": AttackType.RANGED,
+            "magic": AttackType.MAGIC,
+        }
+        attack_type = attack_type_map.get(attack_type_str, AttackType.MELEE)
+
+        # Check if using light-based item/attack
+        is_light_attack = data.get("is_light", False)
+
+        # Get weapon damage (default 5)
+        weapon_damage = data.get("weapon_damage", 5)
+
+        # Execute player attack
+        attack_result = combat_system.player_attack(
+            self._combat_state,
+            self.state,
+            attack_type,
+            weapon_damage,
+            is_light_attack
+        )
+
+        narrative = attack_result.narrative.copy()
+        state_changes: dict[str, Any] = {}
+
+        # Update combat info
+        combat_info = {
+            "enemy_name": self._combat_state.enemy_name,
+            "enemy_hp": self._combat_state.enemy_hp,
+            "enemy_max_hp": self._combat_state.enemy_max_hp,
+            "enemy_evasion": self._combat_state.enemy_evasion,
+            "enemy_attack": "",
+            "enemy_weakness": "",
+        }
+
+        if attack_result.enemy_defeated:
+            # Victory!
+            rewards = combat_system.get_victory_rewards(self._combat_state.enemy_id)
+            narrative.append("")
+            narrative.append("【戰鬥勝利！】")
+
+            # Add drops to narrative
+            if rewards["items"]:
+                for item in rewards["items"]:
+                    narrative.append(f"獲得：{item['name']} x{item['quantity']}")
+            if rewards["gold"] > 0:
+                narrative.append(f"獲得：{rewards['gold']} 金幣")
+
+            # State changes for rewards
+            state_changes["combat_victory"] = True
+            state_changes["drops"] = rewards["items"]
+            state_changes["gold_gained"] = rewards["gold"]
+            state_changes["combat"] = None  # Clear combat state
+
+            # Move to post-combat scene
+            scene = self.get_current_scene()
+            post_combat_scene = scene.get("post_combat_scene", "post_combat")
+
+            self._combat_state = None  # Clear combat
+
+            return ActionResult(
+                success=True,
+                message="戰鬥勝利",
+                narrative=narrative,
+                state_changes=state_changes,
+                available_actions=[{
+                    "id": "continue_after_combat",
+                    "type": "continue",
+                    "label": "繼續",
+                    "data": {"next_scene": post_combat_scene}
+                }],
+                scene_type="narrative",
+                combat_info=None,
+            )
+
+        # Enemy counter-attack
+        narrative.append("")
+        narrative.append(f"【{self._combat_state.enemy_name}的回合】")
+
+        enemy_attack = combat_system.enemy_attack(self._combat_state, self.state)
+        narrative.extend(enemy_attack.narrative)
+
+        # Update player HP in state
+        player = self.state.get("player", {})
+        player["hp"] = enemy_attack.player_hp
+        state_changes["player_hp"] = enemy_attack.player_hp
+
+        # Check if player is defeated
+        if enemy_attack.player_hp <= 0:
+            narrative.append("")
+            narrative.append("你倒下了...")
+            narrative.append("【遊戲結束】")
+
+            return ActionResult(
+                success=False,
+                message="戰鬥失敗",
+                narrative=narrative,
+                state_changes=state_changes,
+                available_actions=[],  # Game over, no actions
+                scene_type="combat",
+                combat_info=combat_info,
+            )
+
+        # Increment turn
+        self._combat_state.turn += 1
+
+        # Save combat state for persistence
+        state_changes["combat"] = {
+            "enemy_id": self._combat_state.enemy_id,
+            "enemy_name": self._combat_state.enemy_name,
+            "enemy_hp": self._combat_state.enemy_hp,
+            "enemy_max_hp": self._combat_state.enemy_max_hp,
+            "enemy_evasion": self._combat_state.enemy_evasion,
+            "enemy_armor": self._combat_state.enemy_armor,
+            "turn": self._combat_state.turn,
+            "is_active": True,
+            "player_hp": self._combat_state.player_hp,
+            "player_max_hp": self._combat_state.player_max_hp,
+        }
+
+        # Continue combat - return available combat actions
+        combat_actions = self._get_combat_actions()
+
         return ActionResult(
             success=True,
-            message="戰鬥系統開發中",
-            narrative=["戰鬥功能正在開發中..."],
-            state_changes={},
-            available_actions=self._get_available_actions(),
+            message=f"第 {self._combat_state.turn} 回合",
+            narrative=narrative,
+            state_changes=state_changes,
+            available_actions=combat_actions,
+            scene_type="combat",
+            combat_info=combat_info,
+            dice_result={
+                "roll": attack_result.dice_roll,
+                "target": attack_result.target_number,
+                "result": "success" if attack_result.success else "failure",
+            },
         )
+
+    def _get_combat_actions(self) -> list[dict[str, Any]]:
+        """Get available combat actions."""
+        actions = [
+            {
+                "id": "attack_melee",
+                "type": "attack",
+                "label": "近戰攻擊（力量）",
+                "data": {"attack_type": "melee"}
+            },
+        ]
+
+        # Check if player has ranged weapon
+        player = self.state.get("player", {})
+        equipment = player.get("equipment", {})
+
+        # Add magic attack if player has enough MP
+        mp = player.get("mp", 0)
+        if mp >= 3:
+            actions.append({
+                "id": "attack_magic",
+                "type": "attack",
+                "label": "魔法攻擊（智力，消耗 3 MP）",
+                "data": {"attack_type": "magic", "mp_cost": 3}
+            })
+
+        # Add use item option
+        inventory = player.get("inventory", [])
+        usable_items = [i for i in inventory if i.get("type") in ("consumable", "potion")]
+        if usable_items:
+            actions.append({
+                "id": "use_item_combat",
+                "type": "use_item",
+                "label": "使用物品",
+                "data": {}
+            })
+
+        return actions
 
     def _handle_use_item(self, data: dict) -> ActionResult:
         """Handle item usage."""
         item_id = data.get("item_id", "")
-        # Placeholder for inventory system
+
+        # If no item specified, return list of usable items
+        if not item_id:
+            return self._show_usable_items()
+
+        player = self.state.get("player", {})
+        inventory = player.get("inventory", [])
+
+        # Check if player has the item
+        if not inventory_system.has_item(inventory, item_id):
+            return ActionResult(
+                success=False,
+                message="物品不存在",
+                narrative=["你沒有這個物品。"],
+                state_changes={},
+                available_actions=self._get_available_actions(),
+            )
+
+        # Check if in combat
+        in_combat = self._combat_state is not None
+
+        # Use the item
+        result = inventory_system.use_item(item_id, player, in_combat)
+
+        if not result.success:
+            return ActionResult(
+                success=False,
+                message=result.message,
+                narrative=result.narrative,
+                state_changes={},
+                available_actions=self._get_available_actions(),
+            )
+
+        state_changes: dict[str, Any] = {}
+
+        # Apply HP change
+        if result.hp_change != 0:
+            new_hp = min(player.get("max_hp", 20), player.get("hp", 0) + result.hp_change)
+            player["hp"] = new_hp
+            state_changes["player_hp"] = new_hp
+
+        # Apply MP change
+        if result.mp_change != 0:
+            new_mp = min(player.get("max_mp", 10), player.get("mp", 0) + result.mp_change)
+            player["mp"] = new_mp
+            state_changes["player_mp"] = new_mp
+
+        # Remove consumed item
+        if result.item_consumed:
+            inventory, _ = inventory_system.remove_item_from_inventory(inventory, item_id, 1)
+            player["inventory"] = inventory
+            state_changes["inventory_changed"] = True
+
+        # Update combat state if in combat
+        if in_combat and self._combat_state:
+            self._combat_state.player_hp = player.get("hp", self._combat_state.player_hp)
+            # Save combat state
+            state_changes["combat"] = {
+                "enemy_id": self._combat_state.enemy_id,
+                "enemy_name": self._combat_state.enemy_name,
+                "enemy_hp": self._combat_state.enemy_hp,
+                "enemy_max_hp": self._combat_state.enemy_max_hp,
+                "enemy_evasion": self._combat_state.enemy_evasion,
+                "enemy_armor": self._combat_state.enemy_armor,
+                "turn": self._combat_state.turn,
+                "is_active": True,
+                "player_hp": self._combat_state.player_hp,
+                "player_max_hp": self._combat_state.player_max_hp,
+            }
+
+        # Get appropriate next actions
+        if in_combat:
+            available_actions = self._get_combat_actions()
+            scene_type = "combat"
+            combat_info = {
+                "enemy_name": self._combat_state.enemy_name,
+                "enemy_hp": self._combat_state.enemy_hp,
+                "enemy_max_hp": self._combat_state.enemy_max_hp,
+                "enemy_evasion": self._combat_state.enemy_evasion,
+                "enemy_attack": "",
+                "enemy_weakness": "",
+            } if self._combat_state else None
+        else:
+            available_actions = self._get_available_actions()
+            scene_type = None
+            combat_info = None
+
         return ActionResult(
             success=True,
-            message=f"使用物品: {item_id}",
-            narrative=[f"你使用了 {item_id}。"],
+            message=result.message,
+            narrative=result.narrative,
+            state_changes=state_changes,
+            available_actions=available_actions,
+            scene_type=scene_type,
+            combat_info=combat_info,
+        )
+
+    def _show_usable_items(self) -> ActionResult:
+        """Show list of usable items as actions."""
+        player = self.state.get("player", {})
+        inventory = player.get("inventory", [])
+        in_combat = self._combat_state is not None
+
+        usable = inventory_system.get_usable_items(inventory, in_combat)
+
+        if not usable:
+            narrative = ["你沒有可以使用的物品。"]
+            if in_combat:
+                return ActionResult(
+                    success=False,
+                    message="沒有可用物品",
+                    narrative=narrative,
+                    state_changes={},
+                    available_actions=self._get_combat_actions(),
+                    scene_type="combat",
+                    combat_info={
+                        "enemy_name": self._combat_state.enemy_name,
+                        "enemy_hp": self._combat_state.enemy_hp,
+                        "enemy_max_hp": self._combat_state.enemy_max_hp,
+                        "enemy_evasion": self._combat_state.enemy_evasion,
+                        "enemy_attack": "",
+                        "enemy_weakness": "",
+                    } if self._combat_state else None,
+                )
+            return ActionResult(
+                success=False,
+                message="沒有可用物品",
+                narrative=narrative,
+                state_changes={},
+                available_actions=self._get_available_actions(),
+            )
+
+        # Build item selection actions
+        actions = []
+        for item in usable:
+            actions.append({
+                "id": f"use_{item['id']}",
+                "type": "use_item",
+                "label": f"{item['name']} x{item['quantity']}",
+                "data": {"item_id": item["id"]}
+            })
+
+        # Add back/cancel option
+        if in_combat:
+            actions.append({
+                "id": "cancel_item",
+                "type": "cancel",
+                "label": "返回",
+                "data": {}
+            })
+
+        return ActionResult(
+            success=True,
+            message="選擇物品",
+            narrative=["選擇要使用的物品："],
             state_changes={},
-            available_actions=self._get_available_actions(),
+            available_actions=actions,
+            scene_type="combat" if in_combat else None,
+            combat_info={
+                "enemy_name": self._combat_state.enemy_name,
+                "enemy_hp": self._combat_state.enemy_hp,
+                "enemy_max_hp": self._combat_state.enemy_max_hp,
+                "enemy_evasion": self._combat_state.enemy_evasion,
+                "enemy_attack": "",
+                "enemy_weakness": "",
+            } if self._combat_state else None,
         )
 
     def _handle_continue(self, data: dict) -> ActionResult:
@@ -249,6 +624,36 @@ class GameEngine:
             available_actions=scene.get("actions", self._get_available_actions()),
             scene_type=scene.get("type", "narrative"),
             combat_info=scene.get("combat_info"),
+        )
+
+    def _handle_cancel(self, data: dict) -> ActionResult:
+        """Handle cancel action (return to previous menu)."""
+        in_combat = self._combat_state is not None
+
+        if in_combat:
+            return ActionResult(
+                success=True,
+                message="取消",
+                narrative=[],
+                state_changes={},
+                available_actions=self._get_combat_actions(),
+                scene_type="combat",
+                combat_info={
+                    "enemy_name": self._combat_state.enemy_name,
+                    "enemy_hp": self._combat_state.enemy_hp,
+                    "enemy_max_hp": self._combat_state.enemy_max_hp,
+                    "enemy_evasion": self._combat_state.enemy_evasion,
+                    "enemy_attack": "",
+                    "enemy_weakness": "",
+                } if self._combat_state else None,
+            )
+
+        return ActionResult(
+            success=True,
+            message="取消",
+            narrative=[],
+            state_changes={},
+            available_actions=self._get_available_actions(),
         )
 
     def _handle_unknown(self, data: dict) -> ActionResult:

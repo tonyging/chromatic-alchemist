@@ -1,0 +1,517 @@
+{
+  "consumables": {
+    "red_potion": {
+      "id": "red_potion",
+      "name": "紅光藥水",
+      "type": "consumable",
+      "subtype": "potion",
+      "description": "閃爍著紅色光芒的藥水，能恢復生命力。",
+      "effect": {
+        "type": "heal_hp",
+        "value": 10
+      },
+      "weight": 0.5,
+      "price": 25,
+      "usable_in_combat": true
+    },
+    "green_potion": {
+      "id": "green_potion",
+      "name": "綠光藥水",
+      "type": "consumable",
+      "subtype": "potion",
+      "description": "散發綠色光暈的藥水，能持續恢復生命力。",
+      "effect": {
+        "type": "regen_hp",
+        "value": 5,
+        "duration": 3
+      },
+      "weight": 0.5,
+      "price": 30,
+      "usable_in_combat": true
+    },
+    "blue_potion": {
+      "id": "blue_potion",
+      "name": "藍光藥水",
+      "type": "consumable",
+      "subtype": "potion",
+      "description": "泛著藍色光芒的藥水，能恢復魔力。",
+      "effect": {
+        "type": "heal_mp",
+        "value": 10
+      },
+      "weight": 0.5,
+      "price": 25,
+      "usable_in_combat": true
+    },
+    "strong_red_potion": {
+      "id": "strong_red_potion",
+      "name": "強效紅光藥水",
+      "type": "consumable",
+      "subtype": "potion",
+      "description": "濃縮的紅光藥水，恢復效果更強。",
+      "effect": {
+        "type": "heal_hp",
+        "value": 25
+      },
+      "weight": 1,
+      "price": 60,
+      "usable_in_combat": true
+    },
+    "strong_blue_potion": {
+      "id": "strong_blue_potion",
+      "name": "強效藍光藥水",
+      "type": "consumable",
+      "subtype": "potion",
+      "description": "濃縮的藍光藥水，恢復效果更強。",
+      "effect": {
+        "type": "heal_mp",
+        "value": 25
+      },
+      "weight": 1,
+      "price": 60,
+      "usable_in_combat": true
+    },
+    "antidote": {
+      "id": "antidote",
+      "name": "解毒草",
+      "type": "consumable",
+      "subtype": "remedy",
+      "description": "能解除中毒狀態的藥草。",
+      "effect": {
+        "type": "cure_status",
+        "status": "poison"
+      },
+      "weight": 0.5,
+      "price": 15,
+      "usable_in_combat": true
+    },
+    "yellow_bomb": {
+      "id": "yellow_bomb",
+      "name": "黃光爆發藥",
+      "type": "consumable",
+      "subtype": "bomb",
+      "description": "投擲後爆發光芒，造成範圍傷害。",
+      "effect": {
+        "type": "damage_aoe",
+        "value": 15
+      },
+      "weight": 1,
+      "price": 50,
+      "usable_in_combat": true
+    },
+    "cyan_purify": {
+      "id": "cyan_purify",
+      "name": "青光淨化藥",
+      "type": "consumable",
+      "subtype": "remedy",
+      "description": "淨化之光，解除所有異常狀態。",
+      "effect": {
+        "type": "cure_all_status"
+      },
+      "weight": 1,
+      "price": 75,
+      "usable_in_combat": true
+    },
+    "fire_resist_potion": {
+      "id": "fire_resist_potion",
+      "name": "抗火藥水",
+      "type": "consumable",
+      "subtype": "buff",
+      "description": "飲用後能抵抗火焰傷害。",
+      "effect": {
+        "type": "buff",
+        "buff_id": "fire_resist",
+        "duration": "combat"
+      },
+      "weight": 1,
+      "price": 40,
+      "usable_in_combat": true
+    }
+  },
+  "materials": {
+    "red_prism_stone": {
+      "id": "red_prism_stone",
+      "name": "紅稜石",
+      "type": "material",
+      "description": "閃爍紅光的稜石，煉金基礎材料。",
+      "weight": 0.5,
+      "price": 10
+    },
+    "green_prism_stone": {
+      "id": "green_prism_stone",
+      "name": "綠稜石",
+      "type": "material",
+      "description": "散發綠光的稜石，煉金基礎材料。",
+      "weight": 0.5,
+      "price": 10
+    },
+    "blue_prism_stone": {
+      "id": "blue_prism_stone",
+      "name": "藍稜石",
+      "type": "material",
+      "description": "泛著藍光的稜石，煉金基礎材料。",
+      "weight": 0.5,
+      "price": 10
+    },
+    "shadow_fragment": {
+      "id": "shadow_fragment",
+      "name": "暗影碎片",
+      "type": "material",
+      "description": "暗影生物留下的結晶，帶有微弱的暗能量。",
+      "weight": 0.5,
+      "price": 15
+    },
+    "dark_essence": {
+      "id": "dark_essence",
+      "name": "暗之精華",
+      "type": "material",
+      "description": "凝聚的暗能量精華，稀有煉金材料。",
+      "weight": 0.5,
+      "price": 30
+    },
+    "sulfur_powder": {
+      "id": "sulfur_powder",
+      "name": "硫磺粉",
+      "type": "material",
+      "description": "火山地區採集的硫磺，用於製作爆發藥。",
+      "weight": 0.5,
+      "price": 20
+    },
+    "frost_herb": {
+      "id": "frost_herb",
+      "name": "冰霜草",
+      "type": "material",
+      "description": "生長在寒冷地區的藥草，用於製作淨化藥。",
+      "weight": 0.5,
+      "price": 20
+    },
+    "void_crystal": {
+      "id": "void_crystal",
+      "name": "虛空結晶",
+      "type": "material",
+      "description": "裂隙中凝結的結晶，蘊含空間能量。",
+      "weight": 1,
+      "price": 100
+    },
+    "flame_core": {
+      "id": "flame_core",
+      "name": "火焰核心",
+      "type": "material",
+      "description": "熔岩泰坦的核心，蘊含熾熱的能量。",
+      "weight": 1,
+      "price": 80
+    },
+    "golem_core": {
+      "id": "golem_core",
+      "name": "魔像核心",
+      "type": "material",
+      "description": "魔像守衛的動力核心，帶有魔力。",
+      "weight": 1,
+      "price": 80
+    }
+  },
+  "weapons": {
+    "knife": {
+      "id": "knife",
+      "name": "小刀",
+      "type": "weapon",
+      "subtype": "melee",
+      "description": "簡單的小刀，聊勝於無。",
+      "damage": 3,
+      "attribute": "strength",
+      "weight": 1,
+      "price": 15
+    },
+    "short_sword": {
+      "id": "short_sword",
+      "name": "短劍",
+      "type": "weapon",
+      "subtype": "melee",
+      "description": "輕便的短劍，適合初學者。",
+      "damage": 5,
+      "attribute": "strength",
+      "weight": 2,
+      "price": 50
+    },
+    "long_sword": {
+      "id": "long_sword",
+      "name": "長劍",
+      "type": "weapon",
+      "subtype": "melee",
+      "description": "標準的騎士長劍。",
+      "damage": 7,
+      "attribute": "strength",
+      "weight": 3,
+      "price": 100
+    },
+    "battle_axe": {
+      "id": "battle_axe",
+      "name": "戰斧",
+      "type": "weapon",
+      "subtype": "melee",
+      "description": "沉重的戰斧，威力強大但難以命中。",
+      "damage": 9,
+      "attribute": "strength",
+      "weight": 4,
+      "price": 150,
+      "modifiers": {
+        "hit_chance": -10
+      }
+    },
+    "prism_sword": {
+      "id": "prism_sword",
+      "name": "光稜劍",
+      "type": "weapon",
+      "subtype": "melee",
+      "description": "蘊含光之力的劍，對暗影敵人特別有效。",
+      "damage": 8,
+      "attribute": "strength",
+      "weight": 2,
+      "price": 200,
+      "is_light": true,
+      "modifiers": {
+        "damage_vs_shadow": 3
+      }
+    },
+    "short_bow": {
+      "id": "short_bow",
+      "name": "短弓",
+      "type": "weapon",
+      "subtype": "ranged",
+      "description": "輕便的短弓，需要箭矢。",
+      "damage": 4,
+      "attribute": "dexterity",
+      "weight": 2,
+      "price": 40,
+      "requires_ammo": "arrow"
+    },
+    "long_bow": {
+      "id": "long_bow",
+      "name": "長弓",
+      "type": "weapon",
+      "subtype": "ranged",
+      "description": "遠程強力的長弓，但較難瞄準。",
+      "damage": 6,
+      "attribute": "dexterity",
+      "weight": 3,
+      "price": 80,
+      "requires_ammo": "arrow",
+      "modifiers": {
+        "hit_chance": -10
+      }
+    },
+    "apprentice_staff": {
+      "id": "apprentice_staff",
+      "name": "學徒法杖",
+      "type": "weapon",
+      "subtype": "magic",
+      "description": "魔法學徒使用的基礎法杖。",
+      "damage": 4,
+      "attribute": "intelligence",
+      "weight": 2,
+      "price": 40
+    },
+    "prism_staff": {
+      "id": "prism_staff",
+      "name": "稜光法杖",
+      "type": "weapon",
+      "subtype": "magic",
+      "description": "能增強藥水效果的法杖。",
+      "damage": 6,
+      "attribute": "intelligence",
+      "weight": 2,
+      "price": 120,
+      "modifiers": {
+        "potion_effect": 20
+      }
+    }
+  },
+  "armor": {
+    "cloth": {
+      "id": "cloth",
+      "name": "布衣",
+      "type": "armor",
+      "description": "普通的布衣，幾乎沒有防護。",
+      "defense": 0,
+      "weight": 1,
+      "price": 10
+    },
+    "leather_armor": {
+      "id": "leather_armor",
+      "name": "皮甲",
+      "type": "armor",
+      "description": "輕便的皮甲，提供基礎防護。",
+      "defense": 5,
+      "weight": 3,
+      "price": 60
+    },
+    "chain_mail": {
+      "id": "chain_mail",
+      "name": "鎖子甲",
+      "type": "armor",
+      "description": "金屬鎖環編織的護甲，但會影響靈活度。",
+      "defense": 10,
+      "weight": 5,
+      "price": 120,
+      "modifiers": {
+        "dexterity_check": -10
+      }
+    },
+    "prism_weave": {
+      "id": "prism_weave",
+      "name": "稜光織甲",
+      "type": "armor",
+      "description": "以光能編織的護甲，輕便卻堅固。",
+      "defense": 10,
+      "weight": 3,
+      "price": 200
+    }
+  },
+  "accessories": {
+    "red_ring": {
+      "id": "red_ring",
+      "name": "紅稜戒指",
+      "type": "accessory",
+      "description": "鑲嵌紅稜石的戒指，增加生命力。",
+      "effect": {
+        "type": "stat_bonus",
+        "stat": "max_hp",
+        "value": 5
+      },
+      "weight": 0,
+      "price": 50
+    },
+    "blue_ring": {
+      "id": "blue_ring",
+      "name": "藍稜戒指",
+      "type": "accessory",
+      "description": "鑲嵌藍稜石的戒指，增加魔力。",
+      "effect": {
+        "type": "stat_bonus",
+        "stat": "max_mp",
+        "value": 5
+      },
+      "weight": 0,
+      "price": 50
+    },
+    "green_necklace": {
+      "id": "green_necklace",
+      "name": "綠稜項鍊",
+      "type": "accessory",
+      "description": "散發綠光的項鍊，休息時額外恢復。",
+      "effect": {
+        "type": "rest_bonus",
+        "value": 10
+      },
+      "weight": 0,
+      "price": 80
+    },
+    "evasion_charm": {
+      "id": "evasion_charm",
+      "name": "迴避護符",
+      "type": "accessory",
+      "description": "增加躲避攻擊的機率。",
+      "effect": {
+        "type": "stat_bonus",
+        "stat": "evasion",
+        "value": 10
+      },
+      "weight": 0,
+      "price": 100
+    },
+    "weight_belt": {
+      "id": "weight_belt",
+      "name": "負重腰帶",
+      "type": "accessory",
+      "description": "增加負重上限。",
+      "effect": {
+        "type": "stat_bonus",
+        "stat": "carry_capacity",
+        "value": 3
+      },
+      "weight": 1,
+      "price": 40
+    },
+    "refractor_badge": {
+      "id": "refractor_badge",
+      "name": "折光師徽章",
+      "type": "accessory",
+      "description": "折光師的身份證明，提升所有檢定成功率。",
+      "effect": {
+        "type": "check_bonus",
+        "value": 5
+      },
+      "weight": 0,
+      "price": 0,
+      "unique": true
+    }
+  },
+  "key_items": {
+    "prism_bottle": {
+      "id": "prism_bottle",
+      "name": "稜光瓶",
+      "type": "key_item",
+      "description": "折光師調配藥水的核心工具，瓶內流動著七彩光芒。",
+      "weight": 0
+    },
+    "master_letter": {
+      "id": "master_letter",
+      "name": "師父的信",
+      "type": "key_item",
+      "description": "師父艾爾文留下的最後一封信。",
+      "weight": 0
+    }
+  },
+  "ammo": {
+    "arrow": {
+      "id": "arrow",
+      "name": "箭矢",
+      "type": "ammo",
+      "description": "標準箭矢，10 支一組。",
+      "quantity_per_stack": 10,
+      "weight": 1,
+      "price": 15
+    },
+    "throwing_knife": {
+      "id": "throwing_knife",
+      "name": "投擲刀",
+      "type": "ammo",
+      "description": "可投擲的小刀，3 把一組。",
+      "quantity_per_stack": 3,
+      "damage": 3,
+      "weight": 0.5,
+      "price": 20
+    }
+  },
+  "misc": {
+    "torch": {
+      "id": "torch",
+      "name": "火把",
+      "type": "misc",
+      "description": "照明工具，持續 1 章節。",
+      "weight": 1,
+      "price": 5
+    },
+    "rope": {
+      "id": "rope",
+      "name": "繩索",
+      "type": "misc",
+      "description": "結實的繩子，攀爬或逃脫時有幫助。",
+      "effect": {
+        "type": "check_bonus",
+        "checks": ["climb", "escape"],
+        "value": 20
+      },
+      "weight": 2,
+      "price": 10
+    },
+    "camp_supplies": {
+      "id": "camp_supplies",
+      "name": "營地用品",
+      "type": "misc",
+      "description": "允許在野外休息紮營。",
+      "weight": 3,
+      "price": 30
+    }
+  }
+}

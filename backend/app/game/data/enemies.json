@@ -1,0 +1,69 @@
+{
+  "shadow_bug": {
+    "id": "shadow_bug",
+    "name": "暗影蟲",
+    "hp": 15,
+    "max_hp": 15,
+    "evasion": 20,
+    "armor": 0,
+    "attacks": [
+      {
+        "id": "shadow_bite",
+        "name": "暗影撕咬",
+        "damage": 4,
+        "description": "暗影蟲撲向你，利爪劃過！"
+      }
+    ],
+    "weakness": "light",
+    "weakness_bonus": 2,
+    "drops": [
+      {"id": "shadow_fragment", "name": "暗影碎片", "quantity": 1}
+    ]
+  },
+  "void_cult_assassin": {
+    "id": "void_cult_assassin",
+    "name": "虛無教團刺客",
+    "hp": 25,
+    "max_hp": 25,
+    "evasion": 40,
+    "armor": 0,
+    "attacks": [
+      {
+        "id": "shadow_dagger",
+        "name": "暗影匕首",
+        "damage": 7,
+        "effect": "poison",
+        "effect_chance": 20,
+        "description": "刺客從暗處襲來，匕首閃著幽光！"
+      }
+    ],
+    "traits": ["ambush"],
+    "weakness": "light",
+    "weakness_bonus": 2,
+    "drops": [
+      {"id": "dark_essence", "name": "暗之精華", "quantity": 1}
+    ]
+  },
+  "void_cult_patrol": {
+    "id": "void_cult_patrol",
+    "name": "虛無教團巡邏兵",
+    "hp": 30,
+    "max_hp": 30,
+    "evasion": 20,
+    "armor": 5,
+    "attacks": [
+      {
+        "id": "shadow_spear",
+        "name": "暗影長矛",
+        "damage": 8,
+        "description": "巡邏兵挺矛刺來！"
+      }
+    ],
+    "weakness": "light",
+    "weakness_bonus": 2,
+    "drops": [
+      {"id": "dark_essence", "name": "暗之精華", "quantity": 1},
+      {"id": "gold", "name": "金幣", "quantity": 15}
+    ]
+  }
+}

@@ -49,8 +49,12 @@ export type ItemType =
   | 'weapon'
   | 'armor'
   | 'consumable'
+  | 'potion'
   | 'material'
-  | 'key_item';
+  | 'key_item'
+  | 'accessory'
+  | 'ammo'
+  | 'misc';
 
 // 戰鬥狀態
 export interface CombatState {
@@ -108,6 +112,7 @@ export interface ActionResponse {
   game_state: GameState | null;
   available_actions: Record<string, unknown>[];
   dice_result: Record<string, unknown> | null;
+  state_changes?: Record<string, unknown>;
   scene_type?: SceneType | null;
   combat_info?: CombatInfo | null;
 }

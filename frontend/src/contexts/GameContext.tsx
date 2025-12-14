@@ -228,8 +228,44 @@ export function GameProvider({ children }: { children: ReactNode }) {
       });
     }
 
-    if (response.game_state) {
+    // 處理 state_changes 中的玩家狀態更新
+    if (state.gameState?.player && response.state_changes) {
+      const playerUpdates: Record<string, unknown> = {};
+
+      if (response.state_changes.player_hp !== undefined) {
+        playerUpdates.hp = response.state_changes.player_hp;
+      }
+      if (response.state_changes.player_mp !== undefined) {
+        playerUpdates.mp = response.state_changes.player_mp;
+      }
+
+      if (Object.keys(playerUpdates).length > 0) {
+        dispatch({
+          type: 'UPDATE_STATE',
+          payload: {
+            player: {
+              ...state.gameState.player,
+              ...playerUpdates,
+            }
+          }
+        });
+      }
+    } else if (response.game_state) {
       dispatch({ type: 'UPDATE_STATE', payload: response.game_state });
+    }
+
+    // 重新載入遊戲狀態以同步 inventory 變更（包括戰利品）
+    const needsInventoryRefresh = response.state_changes?.inventory_changed ||
+                                  response.state_changes?.drops ||
+                                  response.state_changes?.gold_gained;
+    if (needsInventoryRefresh && state.currentSlot) {
+      const freshState = await gameApi.loadSave(state.currentSlot);
+      if (freshState.game_state?.player) {
+        dispatch({
+          type: 'UPDATE_STATE',
+          payload: { player: freshState.game_state.player }
+        });
+      }
     }
 
     return response;

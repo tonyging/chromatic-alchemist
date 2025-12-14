@@ -541,44 +541,75 @@ export default function GamePage() {
 
       {/* ===== 手機版 (md 以下) ===== */}
       <div className="flex md:hidden flex-col flex-1 min-h-0">
-        {/* 頂部：角色狀態（獨立一列） */}
+        {/* 頂部：角色狀態 + 右上按鈕 */}
         <div className="bg-gray-800 p-2 border-b border-gray-700">
-          {gameState?.player && (
-            <div className={`transition-all duration-150 ${playerHit ? 'bg-red-900/40' : ''}`}>
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-amber-400 font-bold text-sm truncate">{gameState.player.name}</span>
-                <span className="text-amber-400/60 text-xs">{gameState.player.gold} G</span>
-              </div>
-              <div className="space-y-1">
-                {/* HP */}
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-gray-500 w-6">HP</span>
-                  <div className="flex-1 h-2 bg-gray-700 rounded-full overflow-hidden">
-                    <div
-                      className={`h-full bg-red-500 transition-all ${playerHit ? 'animate-pulse' : ''}`}
-                      style={{ width: `${(gameState.player.hp / gameState.player.max_hp) * 100}%` }}
-                    />
-                  </div>
-                  <span className="text-xs text-gray-400 w-12 text-right">
-                    {gameState.player.hp}/{gameState.player.max_hp}
-                  </span>
+          <div className="flex items-start gap-2">
+            {/* 角色狀態 */}
+            {gameState?.player && (
+              <div className={`flex-1 transition-all duration-150 ${playerHit ? 'bg-red-900/40' : ''}`}>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-amber-400 font-bold text-sm truncate">{gameState.player.name}</span>
+                  <span className="text-amber-400/60 text-xs">{gameState.player.gold} G</span>
                 </div>
-                {/* MP */}
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-gray-500 w-6">MP</span>
-                  <div className="flex-1 h-2 bg-gray-700 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-blue-500 transition-all"
-                      style={{ width: `${(gameState.player.mp / gameState.player.max_mp) * 100}%` }}
-                    />
+                <div className="space-y-1">
+                  {/* HP */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-gray-500 w-6">HP</span>
+                    <div className="flex-1 h-2 bg-gray-700 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full bg-red-500 transition-all ${playerHit ? 'animate-pulse' : ''}`}
+                        style={{ width: `${(gameState.player.hp / gameState.player.max_hp) * 100}%` }}
+                      />
+                    </div>
+                    <span className="text-xs text-gray-400 w-12 text-right">
+                      {gameState.player.hp}/{gameState.player.max_hp}
+                    </span>
                   </div>
-                  <span className="text-xs text-gray-400 w-12 text-right">
-                    {gameState.player.mp}/{gameState.player.max_mp}
-                  </span>
+                  {/* MP */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-gray-500 w-6">MP</span>
+                    <div className="flex-1 h-2 bg-gray-700 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-blue-500 transition-all"
+                        style={{ width: `${(gameState.player.mp / gameState.player.max_mp) * 100}%` }}
+                      />
+                    </div>
+                    <span className="text-xs text-gray-400 w-12 text-right">
+                      {gameState.player.mp}/{gameState.player.max_mp}
+                    </span>
+                  </div>
                 </div>
               </div>
+            )}
+            {/* 右上按鈕：背包 + 選單 */}
+            <div className="flex items-center gap-0.5 shrink-0">
+              {/* 背包按鈕 */}
+              <button
+                onClick={() => setShowInventory(true)}
+                className="p-2 text-gray-400 hover:text-amber-400 transition-colors relative"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                    d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                </svg>
+                {/* 物品數量徽章 */}
+                {gameState?.player?.inventory && gameState.player.inventory.length > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 bg-amber-500 text-gray-900 text-xs font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                    {gameState.player.inventory.length}
+                  </span>
+                )}
+              </button>
+              {/* 選單按鈕 */}
+              <button
+                onClick={handleExit}
+                className="p-2 text-gray-400 hover:text-white transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              </button>
             </div>
-          )}
+          </div>
         </div>
 
         {/* 敵人狀態（戰鬥時獨立一列） */}
@@ -723,48 +754,17 @@ export default function GamePage() {
         )}
 
         {/* 底部對話框（手機版 - 固定高度防止跳動） */}
-        <div className="min-h-16 bg-gray-800 border-t border-gray-700 p-3 safe-area-pb">
-          <div className="h-full flex items-center gap-2">
-            {/* 對話框內容 */}
-            <div className="flex-1 flex items-center justify-center">
-              {isLoading ? (
-                <p className="text-gray-500 animate-pulse text-sm">...</p>
-              ) : isReading && pendingNarrative.length > 0 ? (
-                <Typewriter texts={pendingNarrative} speed={50} onComplete={handleReadingComplete} />
-              ) : !inCombat && narrative.length === 0 ? (
-                <p className="text-gray-500 text-center text-sm">冒險即將開始...</p>
-              ) : (
-                <p className="text-gray-600 text-xs">— 等待行動 —</p>
-              )}
-            </div>
-            {/* 右側按鈕：背包 + 選單 */}
-            <div className="flex items-center gap-1 shrink-0">
-              {/* 背包按鈕 */}
-              <button
-                onClick={() => setShowInventory(true)}
-                className="p-2 text-gray-400 hover:text-amber-400 transition-colors relative"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                    d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                </svg>
-                {/* 物品數量徽章 */}
-                {gameState?.player?.inventory && gameState.player.inventory.length > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 bg-amber-500 text-gray-900 text-xs font-bold rounded-full w-4 h-4 flex items-center justify-center">
-                    {gameState.player.inventory.length}
-                  </span>
-                )}
-              </button>
-              {/* 選單按鈕 */}
-              <button
-                onClick={handleExit}
-                className="p-2 text-gray-400 hover:text-white transition-colors"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                </svg>
-              </button>
-            </div>
+        <div className="min-h-20 bg-gray-800 border-t border-gray-700 p-3 safe-area-pb">
+          <div className="h-full flex items-center justify-center">
+            {isLoading ? (
+              <p className="text-gray-500 animate-pulse text-sm">...</p>
+            ) : isReading && pendingNarrative.length > 0 ? (
+              <Typewriter texts={pendingNarrative} speed={50} onComplete={handleReadingComplete} />
+            ) : !inCombat && narrative.length === 0 ? (
+              <p className="text-gray-500 text-center text-sm">冒險即將開始...</p>
+            ) : (
+              <p className="text-gray-600 text-xs">— 等待行動 —</p>
+            )}
           </div>
         </div>
       </div>

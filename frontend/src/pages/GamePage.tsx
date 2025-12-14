@@ -30,8 +30,11 @@ export default function GamePage() {
 
   // 中間主視覺區的累積訊息 log
   const [combatLog, setCombatLog] = useState<LogEntry[]>([]);
+  const [typingEntry, setTypingEntry] = useState<LogEntry | null>(null);
+  const [typingCharIndex, setTypingCharIndex] = useState(0);
   const logIdRef = useRef(0);
-  const logEndRef = useRef<HTMLDivElement>(null);
+  const logContainerRef = useRef<HTMLDivElement>(null);
+  const mobileLogContainerRef = useRef<HTMLDivElement>(null);
 
   // 受擊特效狀態
   const [enemyHit, setEnemyHit] = useState(false);
@@ -55,6 +58,9 @@ export default function GamePage() {
     );
   };
 
+  // 待打字的訊息佇列
+  const [pendingEntries, setPendingEntries] = useState<LogEntry[]>([]);
+
   // 偵測新敘事
   useEffect(() => {
     if (narrative.length > lastNarrativeLength.current) {
@@ -65,14 +71,14 @@ export default function GamePage() {
       const shouldGoToLog = sceneType === 'combat' || !isNarrativeText(newTexts);
 
       if (shouldGoToLog) {
-        // 加入主視覺區 log
+        // 加入待打字佇列
         const entry: LogEntry = {
           id: logIdRef.current++,
           type: sceneType === 'combat' ? 'combat' : 'system',
           content: newTexts,
           diceResult: lastDiceResult || undefined,
         };
-        setCombatLog(prev => [...prev, entry]);
+        setPendingEntries(prev => [...prev, entry]);
         setLastDiceResult(null);
       } else {
         // 純劇情用 Typewriter
@@ -80,14 +86,59 @@ export default function GamePage() {
         setIsReading(true);
       }
     }
-  }, [narrative, sceneType, lastDiceResult]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [narrative, sceneType]);
 
-  // 滾動到 log 底部
+  // 處理打字佇列：當沒有正在打字的 entry 時，從佇列取出下一個
   useEffect(() => {
-    if (combatLog.length > 0 && logEndRef.current) {
-      logEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    if (!typingEntry && pendingEntries.length > 0) {
+      const [next, ...rest] = pendingEntries;
+      setTypingEntry(next);
+      setTypingCharIndex(0);
+      setPendingEntries(rest);
     }
-  }, [combatLog]);
+  }, [typingEntry, pendingEntries]);
+
+  // 打字效果
+  const typingSpeed = 15; // ms per character
+  const fullText = typingEntry ? typingEntry.content.join('\n') : '';
+
+  useEffect(() => {
+    if (!typingEntry) return;
+
+    if (typingCharIndex < fullText.length) {
+      const timer = setTimeout(() => {
+        setTypingCharIndex(prev => prev + 1);
+      }, typingSpeed);
+      return () => clearTimeout(timer);
+    } else {
+      // 打字完成，將 entry 加入 combatLog
+      setCombatLog(prev => [...prev, typingEntry]);
+      setTypingEntry(null);
+      setTypingCharIndex(0);
+    }
+  }, [typingEntry, typingCharIndex, fullText]);
+
+  // 點擊加速打字
+  const handleLogClick = () => {
+    if (typingEntry && typingCharIndex < fullText.length) {
+      // 直接顯示完整文字
+      setTypingCharIndex(fullText.length);
+    }
+  };
+
+  // 滾動到 log 底部（電腦版和手機版）
+  useEffect(() => {
+    // 當有正在打字的內容或新增完成的 log 時滾動
+    setTimeout(() => {
+      if (logContainerRef.current) {
+        logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
+      }
+      if (mobileLogContainerRef.current) {
+        mobileLogContainerRef.current.scrollTop = mobileLogContainerRef.current.scrollHeight;
+      }
+    }, 0);
+  }, [combatLog, typingCharIndex]);
 
   const handleReadingComplete = () => {
     setPendingNarrative([]);
@@ -126,9 +177,11 @@ export default function GamePage() {
         action_type: action.type,
         action_data: action.data || { choice_id: action.id }
       });
-      // 儲存骰子結果
+      // 儲存骰子結果（沒有時清除）
       if (response.dice_result) {
         setLastDiceResult(response.dice_result as DiceResult);
+      } else {
+        setLastDiceResult(null);
       }
       // 敵人受擊特效（玩家攻擊成功時）
       if (action.type === 'attack' && response.dice_result?.result === 'success') {
@@ -294,8 +347,12 @@ export default function GamePage() {
         {/* 中間主視覺區：累積訊息 + 底部對話框 */}
         <main className="flex-1 flex flex-col min-h-0">
           {/* 戰鬥訊息 log */}
-          <div className="flex-1 overflow-y-auto p-4 lg:p-6 space-y-3">
-            {combatLog.length === 0 && !inCombat ? (
+          <div
+            ref={logContainerRef}
+            className="flex-1 overflow-y-auto p-4 lg:p-6 space-y-3 cursor-pointer"
+            onClick={handleLogClick}
+          >
+            {combatLog.length === 0 && !typingEntry && !inCombat ? (
               <div className="h-full flex items-center justify-center">
                 <p className="text-gray-600 text-center">
                   {narrative.length === 0 ? '冒險即將開始...' : ''}
@@ -303,9 +360,9 @@ export default function GamePage() {
               </div>
             ) : (
               <>
+                {/* 已完成的 log */}
                 {combatLog.map((entry) => (
                   <div key={entry.id} className="space-y-1">
-                    {/* 骰子結果（純文字） */}
                     {entry.diceResult && (
                       <p className={`text-sm ${
                         entry.diceResult.result === 'success' || entry.diceResult.result === 'critical_success'
@@ -321,7 +378,6 @@ export default function GamePage() {
                         }
                       </p>
                     )}
-                    {/* 訊息內容 */}
                     {entry.content.map((text, i) => (
                       <p
                         key={i}
@@ -339,8 +395,49 @@ export default function GamePage() {
                     ))}
                   </div>
                 ))}
-                {/* 捲動錨點 */}
-                <div ref={logEndRef} />
+                {/* 正在打字的內容 */}
+                {typingEntry && (
+                  <div className="space-y-1">
+                    {typingEntry.diceResult && (
+                      <p className={`text-sm ${
+                        typingEntry.diceResult.result === 'success' || typingEntry.diceResult.result === 'critical_success'
+                          ? 'text-green-400'
+                          : typingEntry.diceResult.result === 'critical_failure'
+                            ? 'text-red-400'
+                            : 'text-gray-400'
+                      }`}>
+                        擲骰 {typingEntry.diceResult.roll}/{typingEntry.diceResult.target} — {
+                          typingEntry.diceResult.result === 'success' ? '成功' :
+                          typingEntry.diceResult.result === 'critical_success' ? '大成功！' :
+                          typingEntry.diceResult.result === 'failure' ? '失敗' : '大失敗...'
+                        }
+                      </p>
+                    )}
+                    {/* 打字中的文字 */}
+                    {(() => {
+                      const displayedText = fullText.slice(0, typingCharIndex);
+                      const lines = displayedText.split('\n');
+                      return lines.map((text, i) => (
+                        <p
+                          key={i}
+                          className={`leading-relaxed text-sm ${
+                            text === '' ? 'h-2' :
+                            text.startsWith('【') ? 'text-amber-400 font-semibold' :
+                            text.includes('傷害') ? 'text-red-300' :
+                            text.includes('HP:') ? 'text-gray-500 text-xs' :
+                            text.includes('獲得') ? 'text-green-400' :
+                            'text-gray-200'
+                          }`}
+                        >
+                          {text || '\u00A0'}
+                          {i === lines.length - 1 && typingCharIndex < fullText.length && (
+                            <span className="animate-pulse text-amber-400">▌</span>
+                          )}
+                        </p>
+                      ));
+                    })()}
+                  </div>
+                )}
               </>
             )}
           </div>
@@ -491,8 +588,12 @@ export default function GamePage() {
         </div>
 
         {/* 中間主區域：戰鬥 log */}
-        <div className="flex-1 overflow-y-auto p-3 space-y-2">
-          {combatLog.length === 0 && !inCombat ? (
+        <div
+          ref={mobileLogContainerRef}
+          className="flex-1 overflow-y-auto p-3 space-y-2 cursor-pointer"
+          onClick={handleLogClick}
+        >
+          {combatLog.length === 0 && !typingEntry && !inCombat ? (
             <div className="h-full flex items-center justify-center">
               <p className="text-gray-600 text-center text-sm">
                 {narrative.length === 0 ? '冒險即將開始...' : ''}
@@ -500,9 +601,9 @@ export default function GamePage() {
             </div>
           ) : (
             <>
+              {/* 已完成的 log */}
               {combatLog.map((entry) => (
                 <div key={entry.id} className="space-y-0.5">
-                  {/* 骰子結果（純文字） */}
                   {entry.diceResult && (
                     <p className={`text-xs ${
                       entry.diceResult.result === 'success' || entry.diceResult.result === 'critical_success'
@@ -531,8 +632,47 @@ export default function GamePage() {
                   ))}
                 </div>
               ))}
-              {/* 捲動錨點 */}
-              <div ref={logEndRef} />
+              {/* 正在打字的內容 */}
+              {typingEntry && (
+                <div className="space-y-0.5">
+                  {typingEntry.diceResult && (
+                    <p className={`text-xs ${
+                      typingEntry.diceResult.result === 'success' || typingEntry.diceResult.result === 'critical_success'
+                        ? 'text-green-400'
+                        : typingEntry.diceResult.result === 'critical_failure'
+                          ? 'text-red-400'
+                          : 'text-gray-400'
+                    }`}>
+                      擲骰 {typingEntry.diceResult.roll}/{typingEntry.diceResult.target} — {
+                        typingEntry.diceResult.result === 'success' ? '成功' :
+                        typingEntry.diceResult.result === 'critical_success' ? '大成功！' :
+                        typingEntry.diceResult.result === 'failure' ? '失敗' : '大失敗...'
+                      }
+                    </p>
+                  )}
+                  {(() => {
+                    const displayedText = fullText.slice(0, typingCharIndex);
+                    const lines = displayedText.split('\n');
+                    return lines.map((text, i) => (
+                      <p
+                        key={i}
+                        className={`leading-relaxed text-xs ${
+                          text === '' ? 'h-1' :
+                          text.startsWith('【') ? 'text-amber-400 font-semibold' :
+                          text.includes('傷害') ? 'text-red-300' :
+                          text.includes('獲得') ? 'text-green-400' :
+                          'text-gray-200'
+                        }`}
+                      >
+                        {text || '\u00A0'}
+                        {i === lines.length - 1 && typingCharIndex < fullText.length && (
+                          <span className="animate-pulse text-amber-400">▌</span>
+                        )}
+                      </p>
+                    ));
+                  })()}
+                </div>
+              )}
             </>
           )}
         </div>

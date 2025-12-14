@@ -242,8 +242,7 @@
         "enemy_max_hp": 15,
         "enemy_evasion": 20,
         "enemy_attack": "暗影撕咬（4 傷害）",
-        "enemy_weakness": "任何光系攻擊傷害 +2",
-        "tutorial_text": "這是你的第一場戰鬥。準備好了嗎？"
+        "enemy_weakness": "任何光系攻擊傷害 +2"
       },
       "post_combat_scene": "post_combat",
       "actions": [

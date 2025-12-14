@@ -242,10 +242,11 @@ async def perform_action(
     engine = GameEngine(save.game_state)
     action_result = engine.process_action(action.action_type, action.action_data or {})
 
-    # Update game state if there are changes
-    if action_result.state_changes:
-        updated_state = {**save.game_state}
+    # Always update game state from engine (auto-save)
+    updated_state = {**save.game_state}
 
+    # Apply state changes if any
+    if action_result.state_changes:
         # Apply scene change
         if "scene" in action_result.state_changes:
             updated_state["scene"] = action_result.state_changes["scene"]
@@ -315,9 +316,13 @@ async def perform_action(
             # engine.state.player.inventory was modified directly
             updated_state["player"]["inventory"] = engine.state.get("player", {}).get("inventory", [])
 
-        save.game_state = updated_state
-        flag_modified(save, "game_state")
-        await db.commit()
+    # Always sync scene from engine state (ensures scene is always saved)
+    updated_state["scene"] = engine.state.get("scene", updated_state.get("scene"))
+
+    # Always commit (auto-save on every action)
+    save.game_state = updated_state
+    flag_modified(save, "game_state")
+    await db.commit()
 
     return ActionResponse(
         success=action_result.success,

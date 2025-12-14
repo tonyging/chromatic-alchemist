@@ -37,6 +37,29 @@ export default function GamePage() {
   // 手機版背包 Bottom Sheet 狀態
   const [showInventory, setShowInventory] = useState(false);
 
+  // 手機版屬性面板 Bottom Sheet 狀態
+  const [showStats, setShowStats] = useState(false);
+
+  // 戰鬥過渡動畫狀態
+  const [combatTransition, setCombatTransition] = useState<'entering' | 'exiting' | null>(null);
+  const prevSceneTypeRef = useRef(sceneType);
+
+  // 偵測場景類型變化，觸發過渡動畫
+  useEffect(() => {
+    if (prevSceneTypeRef.current !== sceneType) {
+      if (sceneType === 'combat' && prevSceneTypeRef.current !== 'combat') {
+        // 進入戰鬥
+        setCombatTransition('entering');
+        setTimeout(() => setCombatTransition(null), 1500);
+      } else if (sceneType !== 'combat' && prevSceneTypeRef.current === 'combat') {
+        // 離開戰鬥（勝利）
+        setCombatTransition('exiting');
+        setTimeout(() => setCombatTransition(null), 1500);
+      }
+      prevSceneTypeRef.current = sceneType;
+    }
+  }, [sceneType]);
+
   // Redirect if no active game
   useEffect(() => {
     if (!currentSlot) {
@@ -199,7 +222,24 @@ export default function GamePage() {
   const inCombat = sceneType === 'combat' && combatInfo;
 
   return (
-    <div className="h-screen bg-gray-900 text-white flex flex-col overflow-hidden">
+    <div className="h-screen bg-gray-900 text-white flex flex-col overflow-hidden relative">
+      {/* 戰鬥過渡動畫 Overlay */}
+      {combatTransition && (
+        <div
+          className={`fixed inset-0 z-50 flex items-center justify-center pointer-events-none ${
+            combatTransition === 'entering'
+              ? 'animate-combat-enter bg-red-900/80'
+              : 'animate-combat-exit bg-green-900/80'
+          }`}
+        >
+          <p className={`text-3xl font-bold ${
+            combatTransition === 'entering' ? 'text-red-400' : 'text-green-400'
+          }`}>
+            {combatTransition === 'entering' ? '⚔️ 戰鬥開始！' : '🏆 勝利！'}
+          </p>
+        </div>
+      )}
+
       {/* ===== 電腦版 (md 以上) ===== */}
       <div className="hidden md:flex flex-1 min-h-0">
         {/* 左側面板（延伸到底） */}
@@ -480,10 +520,19 @@ export default function GamePage() {
             {/* 角色狀態 */}
             {gameState?.player && (
               <div className={`flex-1 transition-all duration-300 ${playerHit ? 'bg-red-900/50 animate-hit-shake' : ''}`}>
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-amber-400 font-bold text-sm truncate">{gameState.player.name}</span>
+                <button
+                  onClick={() => setShowStats(true)}
+                  className="flex items-center justify-between mb-1 w-full text-left"
+                  aria-label="查看角色屬性"
+                >
+                  <span className="text-amber-400 font-bold text-sm truncate flex items-center gap-1">
+                    {gameState.player.name}
+                    <svg className="w-3 h-3 text-amber-400/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </span>
                   <span className="text-amber-400/60 text-xs">{gameState.player.gold} G</span>
-                </div>
+                </button>
                 <div className="space-y-1">
                   {/* HP */}
                   <div className="flex items-center gap-2">
@@ -709,6 +758,83 @@ export default function GamePage() {
               );
             })}
           </ul>
+        )}
+      </BottomSheet>
+
+      {/* 手機版屬性面板 Bottom Sheet */}
+      <BottomSheet
+        isOpen={showStats}
+        onClose={() => setShowStats(false)}
+        title="角色屬性"
+      >
+        {gameState?.player && (
+          <div className="space-y-4">
+            {/* 角色名稱與金幣 */}
+            <div className="flex justify-between items-center">
+              <h3 className="text-amber-400 font-bold text-lg">{gameState.player.name}</h3>
+              <span className="text-amber-400">{gameState.player.gold} G</span>
+            </div>
+
+            {/* HP/MP */}
+            <div className="space-y-2">
+              <div>
+                <div className="flex justify-between text-sm mb-1">
+                  <span className="text-gray-400">HP</span>
+                  <span className={gameState.player.hp / gameState.player.max_hp <= 0.3 ? 'text-red-400' : 'text-gray-300'}>
+                    {gameState.player.hp}/{gameState.player.max_hp}
+                  </span>
+                </div>
+                <div className="h-3 bg-gray-700 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full transition-all ${
+                      gameState.player.hp / gameState.player.max_hp <= 0.3 ? 'bg-red-600' : 'bg-red-500'
+                    }`}
+                    style={{ width: `${(gameState.player.hp / gameState.player.max_hp) * 100}%` }}
+                  />
+                </div>
+              </div>
+              <div>
+                <div className="flex justify-between text-sm mb-1">
+                  <span className="text-gray-400">MP</span>
+                  <span className="text-gray-300">{gameState.player.mp}/{gameState.player.max_mp}</span>
+                </div>
+                <div className="h-3 bg-gray-700 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-blue-500 transition-all"
+                    style={{ width: `${(gameState.player.mp / gameState.player.max_mp) * 100}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* 屬性值 */}
+            <div className="grid grid-cols-2 gap-2">
+              <div className="bg-gray-700/50 p-3 rounded-lg">
+                <span className="text-gray-400 text-sm">力量</span>
+                <span className="float-right text-white font-bold">{gameState.player.stats.strength}</span>
+              </div>
+              <div className="bg-gray-700/50 p-3 rounded-lg">
+                <span className="text-gray-400 text-sm">敏捷</span>
+                <span className="float-right text-white font-bold">{gameState.player.stats.dexterity}</span>
+              </div>
+              <div className="bg-gray-700/50 p-3 rounded-lg">
+                <span className="text-gray-400 text-sm">智力</span>
+                <span className="float-right text-white font-bold">{gameState.player.stats.intelligence}</span>
+              </div>
+              <div className="bg-gray-700/50 p-3 rounded-lg">
+                <span className="text-gray-400 text-sm">感知</span>
+                <span className="float-right text-white font-bold">{gameState.player.stats.perception}</span>
+              </div>
+            </div>
+
+            {/* 背景資訊 */}
+            {gameState.player.background && (
+              <div className="bg-gray-700/30 p-3 rounded-lg">
+                <span className="text-gray-400 text-sm">背景：</span>
+                <span className="text-amber-400 ml-2">{gameState.player.background}</span>
+              </div>
+            )}
+          </div>
         )}
       </BottomSheet>
 

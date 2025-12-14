@@ -123,3 +123,42 @@ body {
 .animate-fade-in {
   animation: fade-in 0.15s ease-out;
 }
+
+/* Combat transition animations */
+@keyframes combat-enter {
+  0% {
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes combat-exit {
+  0% {
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.animate-combat-enter {
+  animation: combat-enter 1.5s ease-in-out forwards;
+}
+
+.animate-combat-exit {
+  animation: combat-exit 1.5s ease-in-out forwards;
+}

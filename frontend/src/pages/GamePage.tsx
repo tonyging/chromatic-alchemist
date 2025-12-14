@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useLayoutEffect } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import Typewriter from '../components/Typewriter';
@@ -47,6 +47,10 @@ export default function GamePage() {
   const prevSceneTypeRef = useRef(sceneType);
   const combatTransitionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // 首次戰鬥加速提示（手機版）
+  const [showSpeedTip, setShowSpeedTip] = useState(false);
+  const speedTipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // 偵測場景類型變化，觸發過渡動畫
   useEffect(() => {
     if (prevSceneTypeRef.current !== sceneType) {
@@ -58,6 +62,16 @@ export default function GamePage() {
         // 進入戰鬥
         setCombatTransition('entering');
         combatTransitionTimerRef.current = setTimeout(() => setCombatTransition(null), 1000);
+
+        // 首次戰鬥顯示加速提示（手機版）
+        const hasSeenTip = localStorage.getItem('combat_speed_tip_seen');
+        if (!hasSeenTip) {
+          setTimeout(() => {
+            setShowSpeedTip(true);
+            localStorage.setItem('combat_speed_tip_seen', 'true');
+            speedTipTimerRef.current = setTimeout(() => setShowSpeedTip(false), 4000);
+          }, 1500);
+        }
       } else if (sceneType !== 'combat' && prevSceneTypeRef.current === 'combat') {
         // 離開戰鬥（勝利）
         setCombatTransition('exiting');
@@ -73,6 +87,7 @@ export default function GamePage() {
       if (combatTransitionTimerRef.current) clearTimeout(combatTransitionTimerRef.current);
       if (enemyHitTimerRef.current) clearTimeout(enemyHitTimerRef.current);
       if (playerHitTimerRef.current) clearTimeout(playerHitTimerRef.current);
+      if (speedTipTimerRef.current) clearTimeout(speedTipTimerRef.current);
     };
   }, []);
 
@@ -85,10 +100,6 @@ export default function GamePage() {
 
   // 待打字的訊息佇列
   const [pendingEntries, setPendingEntries] = useState<LogEntry[]>([]);
-
-  // 用 ref 追蹤 lastDiceResult 以避免依賴問題
-  const lastDiceResultRef = useRef<DiceResult | null>(null);
-  lastDiceResultRef.current = lastDiceResult;
 
   // 偵測新敘事
   useEffect(() => {
@@ -105,7 +116,7 @@ export default function GamePage() {
           id: logIdRef.current++,
           type: sceneType === 'combat' ? 'combat' : 'system',
           content: newTexts,
-          diceResult: lastDiceResultRef.current || undefined,
+          diceResult: lastDiceResult || undefined,
         };
         setPendingEntries(prev => [...prev, entry]);
         setLastDiceResult(null);
@@ -115,7 +126,7 @@ export default function GamePage() {
         setIsReading(true);
       }
     }
-  }, [narrative, sceneType]);
+  }, [narrative, sceneType, lastDiceResult]);
 
   // 處理打字佇列：當沒有正在打字的 entry 時，從佇列取出下一個
   useEffect(() => {
@@ -158,14 +169,22 @@ export default function GamePage() {
     }
   };
 
-  // 滾動到 log 底部（電腦版和手機版）- 使用 useLayoutEffect 確保 DOM 更新後立即滾動
-  useLayoutEffect(() => {
-    if (logContainerRef.current) {
-      logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
-    }
-    if (mobileLogContainerRef.current) {
-      mobileLogContainerRef.current.scrollTop = mobileLogContainerRef.current.scrollHeight;
-    }
+  // 滾動到 log 底部（電腦版和手機版）
+  useEffect(() => {
+    requestAnimationFrame(() => {
+      if (logContainerRef.current) {
+        logContainerRef.current.scrollTo({
+          top: logContainerRef.current.scrollHeight,
+          behavior: 'smooth'
+        });
+      }
+      if (mobileLogContainerRef.current) {
+        mobileLogContainerRef.current.scrollTo({
+          top: mobileLogContainerRef.current.scrollHeight,
+          behavior: 'smooth'
+        });
+      }
+    });
   }, [combatLog, typingCharIndex]);
 
   const handleReadingComplete = () => {
@@ -255,12 +274,14 @@ export default function GamePage() {
               ? 'animate-combat-enter bg-red-900/80'
               : 'animate-combat-exit bg-green-900/80'
           }`}
-          onClick={() => {
+          onClick={(e) => {
+            e.stopPropagation();
             if (combatTransitionTimerRef.current) {
               clearTimeout(combatTransitionTimerRef.current);
             }
             setCombatTransition(null);
           }}
+          onMouseDown={(e) => e.stopPropagation()}
         >
           <p className={`text-3xl font-bold ${
             combatTransition === 'entering' ? 'text-red-400' : 'text-green-400'
@@ -303,17 +324,19 @@ export default function GamePage() {
                     </div>
                   </div>
                 )}
-                {/* 敵人能力 */}
-                <div className="text-xs space-y-1">
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">迴避</span>
-                    <span className="text-gray-300">{combatInfo.enemy_evasion}%</span>
+                {/* 敵人能力（死亡後隱藏） */}
+                {combatInfo.enemy_hp > 0 && (
+                  <div className="text-xs space-y-1">
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">迴避</span>
+                      <span className="text-gray-300">{combatInfo.enemy_evasion}%</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">弱點</span>
+                      <span className="text-amber-400">{combatInfo.enemy_weakness}</span>
+                    </div>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">弱點</span>
-                    <span className="text-amber-400">{combatInfo.enemy_weakness}</span>
-                  </div>
-                </div>
+                )}
               </div>
             ) : (
               <div className="text-gray-600 text-sm text-center py-6">
@@ -400,7 +423,9 @@ export default function GamePage() {
             {/* Exit Button */}
             <button
               onClick={handleExit}
-              className="mt-auto py-2 bg-gray-700 hover:bg-gray-600 rounded text-gray-300 text-sm"
+              className="mt-auto py-2 bg-gray-700 hover:bg-gray-600 rounded text-gray-300 text-sm
+                         focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900
+                         transition-all"
             >
               離開遊戲
             </button>
@@ -444,15 +469,6 @@ export default function GamePage() {
             )}
           </div>
 
-          {/* 教學提示 */}
-          {inCombat && combatInfo.tutorial_text && combatInfo.enemy_hp > 0 && (
-            <div className="px-4 pb-2">
-              <div className="bg-amber-900/30 border border-amber-700 rounded-lg p-2">
-                <p className="text-amber-300 text-xs">{combatInfo.tutorial_text}</p>
-              </div>
-            </div>
-          )}
-
           {/* 底部對話框（在中間區域內） */}
           <div className="h-28 lg:h-32 bg-gray-800 border-t border-gray-700 p-3 shrink-0">
             <div className="h-full flex items-center justify-center">
@@ -476,7 +492,7 @@ export default function GamePage() {
         </main>
 
         {/* 右側：物品欄 + 選項（延伸到底） */}
-        <aside className="w-48 lg:w-56 bg-gray-800 border-l border-gray-700 shrink-0 flex flex-col">
+        <aside className="w-52 lg:w-56 bg-gray-800 border-l border-gray-700 shrink-0 flex flex-col">
           {/* 物品欄 */}
           <div className="flex-1 p-3 overflow-y-auto">
             <h3 className="text-sm font-semibold text-gray-300 mb-2">物品欄</h3>
@@ -504,7 +520,8 @@ export default function GamePage() {
                               disabled={isLoading}
                               className="w-full flex justify-between items-center p-1.5 rounded
                                          bg-gray-700/50 hover:bg-gray-600/50 transition-colors
-                                         text-left disabled:opacity-50"
+                                         text-left disabled:opacity-50
+                                         focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500 focus-visible:ring-offset-1 focus-visible:ring-offset-gray-800"
                             >
                               <span className="text-green-400 truncate">{item.name}</span>
                               <span className="text-gray-500 ml-1">x{item.quantity}</span>
@@ -524,20 +541,31 @@ export default function GamePage() {
             </div>
           </div>
 
+          {/* 電腦版教學提示（選項上方） */}
+          {inCombat && combatInfo.tutorial_text && combatInfo.enemy_hp > 0 && (
+            <div className="px-3 pt-2 pb-1">
+              <div className="bg-amber-900/30 border border-amber-700 rounded-lg p-2">
+                <p className="text-amber-300 text-xs leading-relaxed">{combatInfo.tutorial_text}</p>
+              </div>
+            </div>
+          )}
+
           {/* 選項區（右側下方） */}
           {!isReading && availableActions.length > 0 && (
             <div className="p-3 border-t border-gray-700 bg-gray-800/80">
               <div className="space-y-1.5">
-                {availableActions.map((action) => (
+                {availableActions.map((action, index) => (
                   <button
                     key={action.id}
                     onClick={() => handleAction(action)}
                     disabled={isLoading}
-                    className={`w-full py-2 px-3 rounded-lg transition-all text-xs ${
-                      inCombat
+                    className={`w-full py-2 px-3 rounded-lg transition-all text-xs
+                      ${inCombat
                         ? 'bg-red-900/50 hover:bg-red-800/60 border border-red-700 hover:border-red-500'
-                        : 'bg-gray-700 hover:bg-gray-600 border border-gray-600 hover:border-amber-500'
-                    }`}
+                        : 'bg-gray-700 hover:bg-gray-600 border border-gray-600 hover:border-amber-500'}
+                      focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-800
+                      disabled:opacity-50`}
+                    aria-label={`選項 ${index + 1}: ${action.label}`}
                   >
                     <span className="text-gray-100">{action.label}</span>
                   </button>
@@ -557,7 +585,9 @@ export default function GamePage() {
             {gameState?.player && (
               <button
                 onClick={() => setShowStats(true)}
-                className={`flex-1 transition-all duration-300 text-left ${playerHit ? 'bg-red-900/50 animate-hit-shake' : ''}`}
+                className={`flex-1 transition-all duration-300 text-left
+                  focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-inset rounded-sm
+                  ${playerHit ? 'bg-red-900/50 animate-hit-shake' : ''}`}
                 aria-label="查看角色屬性"
               >
                 <div className="flex items-center justify-between mb-1">
@@ -613,7 +643,8 @@ export default function GamePage() {
               <button
                 onClick={handleExit}
                 aria-label="離開遊戲"
-                className="w-11 h-11 flex items-center justify-center text-gray-400 hover:text-red-400 transition-colors"
+                className="w-11 h-11 flex items-center justify-center text-gray-400 hover:text-red-400 transition-colors rounded-md
+                           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
@@ -624,7 +655,8 @@ export default function GamePage() {
               <button
                 onClick={() => setShowInventory(true)}
                 aria-label="開啟物品欄"
-                className="w-11 h-11 flex items-center justify-center text-gray-400 hover:text-amber-400 transition-colors relative"
+                className="w-11 h-11 flex items-center justify-center text-gray-400 hover:text-amber-400 transition-colors relative rounded-md
+                           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
@@ -632,7 +664,7 @@ export default function GamePage() {
                 </svg>
                 {/* 物品數量徽章 */}
                 {gameState?.player?.inventory && gameState.player.inventory.length > 0 && (
-                  <span className="absolute top-1 right-1 bg-amber-500 text-gray-900 text-xs font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                  <span className="absolute -top-1 -right-1 bg-amber-500 text-gray-900 text-xs font-bold rounded-full w-4 h-4 flex items-center justify-center">
                     {gameState.player.inventory.length}
                   </span>
                 )}
@@ -650,10 +682,13 @@ export default function GamePage() {
               <span className={`text-sm font-bold ${combatInfo.enemy_hp <= 0 ? 'text-gray-500 line-through' : 'text-red-400'}`}>
                 {combatInfo.enemy_name}
               </span>
-              <div className="flex items-center gap-2 text-xs">
-                <span className="text-gray-500">迴避 {combatInfo.enemy_evasion}%</span>
-                <span className="text-amber-400">弱點: {combatInfo.enemy_weakness}</span>
-              </div>
+              {/* 敵人能力（死亡後隱藏） */}
+              {combatInfo.enemy_hp > 0 && (
+                <div className="flex items-center gap-2 text-xs">
+                  <span className="text-gray-500">迴避 {combatInfo.enemy_evasion}%</span>
+                  <span className="text-amber-400">弱點: {combatInfo.enemy_weakness}</span>
+                </div>
+              )}
             </div>
             {/* HP 條（敵人死亡後隱藏） */}
             {combatInfo.enemy_hp > 0 && (
@@ -683,9 +718,15 @@ export default function GamePage() {
         {/* 中間主區域：戰鬥 log */}
         <div
           ref={mobileLogContainerRef}
-          className="flex-1 overflow-y-auto p-3 space-y-2 cursor-pointer"
+          className="flex-1 overflow-y-auto p-3 space-y-2 cursor-pointer relative"
           onClick={handleLogClick}
         >
+          {/* 首次戰鬥加速提示氣泡 */}
+          {showSpeedTip && (
+            <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 bg-amber-500 text-gray-900 px-4 py-2 rounded-lg shadow-lg animate-bounce">
+              <p className="text-sm font-bold">💡 點擊畫面可加速對話</p>
+            </div>
+          )}
           {combatLog.length === 0 && !typingEntry && !inCombat ? (
             <div className="h-full flex items-center justify-center">
               <p className="text-gray-600 text-center text-sm">
@@ -720,16 +761,18 @@ export default function GamePage() {
         {!isReading && availableActions.length > 0 && (
           <div className="bg-gray-800 border-t border-gray-700 p-2">
             <div className="flex flex-col gap-1.5">
-              {availableActions.map((action) => (
+              {availableActions.map((action, index) => (
                 <button
                   key={action.id}
                   onClick={() => handleAction(action)}
                   disabled={isLoading}
-                  className={`w-full py-2.5 px-3 rounded-lg transition-all text-sm ${
-                    inCombat
+                  className={`w-full py-2.5 px-3 rounded-lg transition-all text-sm
+                    ${inCombat
                       ? 'bg-red-900/50 border border-red-700 active:bg-red-800/60'
-                      : 'bg-gray-700 border border-gray-600 active:bg-gray-600'
-                  }`}
+                      : 'bg-gray-700 border border-gray-600 active:bg-gray-600'}
+                    focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-800
+                    disabled:opacity-50`}
+                  aria-label={`選項 ${index + 1}: ${action.label}`}
                 >
                   <span className="text-gray-100">{action.label}</span>
                 </button>
@@ -788,7 +831,8 @@ export default function GamePage() {
                           setShowInventory(false);
                         }}
                         disabled={isLoading}
-                        className="px-3 py-1 bg-amber-600 hover:bg-amber-500 text-white text-sm rounded transition-colors disabled:bg-gray-600"
+                        className="px-3 py-1 bg-amber-600 hover:bg-amber-500 text-white text-sm rounded transition-colors disabled:bg-gray-600
+                                   focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 disabled:opacity-50"
                       >
                         使用
                       </button>

@@ -22,8 +22,8 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-900">
-      <div className="w-full max-w-md p-8 bg-gray-800 rounded-lg shadow-xl">
+    <div className="min-h-screen flex items-center justify-center bg-gray-900 px-4">
+      <div className="w-full max-w-md p-6 sm:p-8 bg-gray-800 rounded-lg shadow-xl">
         <h1 className="text-3xl font-bold text-center text-amber-400 mb-8">
           光譜紀元
         </h1>

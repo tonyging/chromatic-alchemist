@@ -228,8 +228,11 @@ export function GameProvider({ children }: { children: ReactNode }) {
       });
     }
 
-    // 處理 state_changes 中的玩家狀態更新
-    if (state.gameState?.player && response.state_changes) {
+    // 更新遊戲狀態：優先使用 response.game_state（包含完整的 player、inventory 等）
+    if (response.game_state) {
+      dispatch({ type: 'UPDATE_STATE', payload: response.game_state });
+    } else if (state.gameState?.player && response.state_changes) {
+      // 如果沒有完整 game_state，則用 state_changes 局部更新
       const playerUpdates: Record<string, unknown> = {};
 
       if (response.state_changes.player_hp !== undefined) {
@@ -248,22 +251,6 @@ export function GameProvider({ children }: { children: ReactNode }) {
               ...playerUpdates,
             }
           }
-        });
-      }
-    } else if (response.game_state) {
-      dispatch({ type: 'UPDATE_STATE', payload: response.game_state });
-    }
-
-    // 重新載入遊戲狀態以同步 inventory 變更（包括戰利品）
-    const needsInventoryRefresh = response.state_changes?.inventory_changed ||
-                                  response.state_changes?.drops ||
-                                  response.state_changes?.gold_gained;
-    if (needsInventoryRefresh && state.currentSlot) {
-      const freshState = await gameApi.loadSave(state.currentSlot);
-      if (freshState.game_state?.player) {
-        dispatch({
-          type: 'UPDATE_STATE',
-          payload: { player: freshState.game_state.player }
         });
       }
     }

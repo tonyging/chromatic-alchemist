@@ -328,7 +328,7 @@ async def perform_action(
         success=action_result.success,
         message=action_result.message,
         narrative=action_result.narrative,
-        game_state=None,  # Send full state updates separately if needed
+        game_state=updated_state,  # Always return full state for inventory sync
         available_actions=action_result.available_actions,
         dice_result=action_result.dice_result,
         state_changes=action_result.state_changes,

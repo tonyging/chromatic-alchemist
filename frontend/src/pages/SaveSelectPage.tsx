@@ -65,19 +65,22 @@ export default function SaveSelectPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white p-8">
+    <div className="min-h-screen bg-gray-900 text-white p-4 sm:p-8">
       <div className="max-w-2xl mx-auto">
         {/* Header */}
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold text-amber-400">選擇存檔</h1>
-          <div className="flex items-center gap-4">
-            <span className="text-gray-400 text-sm">{user?.email}</span>
-            <button
-              onClick={logout}
-              className="text-gray-400 hover:text-white text-sm"
-            >
-              登出
-            </button>
+        <div className="mb-8">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+            <h1 className="text-2xl sm:text-3xl font-bold text-amber-400">選擇存檔</h1>
+            <div className="flex items-center gap-3 text-sm">
+              <span className="text-gray-400 truncate max-w-[200px]">{user?.email}</span>
+              <span className="text-gray-600">|</span>
+              <button
+                onClick={logout}
+                className="text-gray-400 hover:text-amber-400 transition-colors whitespace-nowrap"
+              >
+                登出
+              </button>
+            </div>
           </div>
         </div>
 

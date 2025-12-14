@@ -14,7 +14,8 @@
       "Bash(powershell -Command:*)",
       "Bash(python:*)",
       "Bash(npx tsc:*)",
-      "Bash(git restore:*)"
+      "Bash(git restore:*)",
+      "Skill(frontend-design)"
     ]
   }
 }

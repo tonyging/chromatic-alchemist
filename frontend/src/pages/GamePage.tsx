@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import Typewriter from '../components/Typewriter';
@@ -10,7 +10,21 @@ import BottomSheet from '../components/BottomSheet';
 import Spinner from '../components/Spinner';
 import Tooltip from '../components/Tooltip';
 import { isNarrativeText, getWeaknessColorClass, getWeaknessIndicator } from '../utils/combat';
-import type { DiceResult } from '../types';
+import type { DiceResult, InventoryItem } from '../types';
+import {
+  TYPING_SPEED,
+  NARRATIVE_TYPING_SPEED,
+  COMBAT_LOG_MAX_LENGTH,
+  COMBAT_TRANSITION_DURATION,
+  VICTORY_CELEBRATION_DURATION,
+  SPEED_TIP_DURATION,
+  SPEED_TIP_DELAY,
+  HIT_EFFECT_DURATION,
+  LOW_HP_THRESHOLD,
+  VIBRATE_DURATION,
+  STORAGE_KEY_SOUND_ENABLED,
+  STORAGE_KEY_COMBAT_TIP_SEEN,
+} from '../constants/game';
 
 export default function GamePage() {
   const { gameState, narrative, availableActions, sendAction, exitGame, loadGame, isLoading, currentSlot, sceneType, combatInfo } = useGame();
@@ -55,9 +69,20 @@ export default function GamePage() {
   const [showVictoryCelebration, setShowVictoryCelebration] = useState(false);
   const victoryCelebrationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // 勝利慶祝硬幣位置（使用 useState 初始化函數，只在首次掛載時計算一次）
+  const [coinPositions] = useState(() => {
+    return Array.from({ length: 12 }, (_, i) => {
+      const angle = (i / 12) * 2 * Math.PI;
+      const distance = 150 + Math.random() * 100;
+      const tx = Math.cos(angle) * distance;
+      const ty = Math.sin(angle) * distance;
+      return { tx, ty, delay: i * 0.05 };
+    });
+  });
+
   // 音效系統狀態（從 localStorage 讀取）
   const [isSoundEnabled, setIsSoundEnabled] = useState(() => {
-    const saved = localStorage.getItem('sound_enabled');
+    const saved = localStorage.getItem(STORAGE_KEY_SOUND_ENABLED);
     return saved !== null ? saved === 'true' : true; // 預設開啟
   });
 
@@ -65,7 +90,7 @@ export default function GamePage() {
   const toggleSound = () => {
     setIsSoundEnabled((prev) => {
       const newValue = !prev;
-      localStorage.setItem('sound_enabled', String(newValue));
+      localStorage.setItem(STORAGE_KEY_SOUND_ENABLED, String(newValue));
       return newValue;
     });
   };
@@ -117,20 +142,20 @@ export default function GamePage() {
   };
 
   // 物品分組函數（電腦版物品欄用）
-  const groupInventoryByType = (inventory: typeof gameState.player.inventory) => {
+  const groupInventoryByType = (inventory: InventoryItem[]) => {
     const groups = {
-      potion: [] as typeof inventory,
-      equipment: [] as typeof inventory,
-      material: [] as typeof inventory,
-      other: [] as typeof inventory,
+      potion: [] as InventoryItem[],
+      equipment: [] as InventoryItem[],
+      material: [] as InventoryItem[],
+      other: [] as InventoryItem[],
     };
 
     inventory.forEach((item) => {
       if (item.type === 'consumable' || item.type === 'potion') {
         groups.potion.push(item);
-      } else if (item.type === 'equipment' || item.type === 'weapon' || item.type === 'armor') {
+      } else if (item.type === 'weapon' || item.type === 'armor' || item.type === 'accessory') {
         groups.equipment.push(item);
-      } else if (item.type === 'material' || item.type === 'ingredient') {
+      } else if (item.type === 'material') {
         groups.material.push(item);
       } else {
         groups.other.push(item);
@@ -150,25 +175,25 @@ export default function GamePage() {
       if (sceneType === 'combat' && prevSceneTypeRef.current !== 'combat') {
         // 進入戰鬥
         setCombatTransition('entering');
-        combatTransitionTimerRef.current = setTimeout(() => setCombatTransition(null), 1000);
+        combatTransitionTimerRef.current = setTimeout(() => setCombatTransition(null), COMBAT_TRANSITION_DURATION);
 
         // 首次戰鬥顯示加速提示（手機版）
-        const hasSeenTip = localStorage.getItem('combat_speed_tip_seen');
+        const hasSeenTip = localStorage.getItem(STORAGE_KEY_COMBAT_TIP_SEEN);
         if (!hasSeenTip) {
           setTimeout(() => {
             setShowSpeedTip(true);
-            localStorage.setItem('combat_speed_tip_seen', 'true');
-            speedTipTimerRef.current = setTimeout(() => setShowSpeedTip(false), 4000);
-          }, 1500);
+            localStorage.setItem(STORAGE_KEY_COMBAT_TIP_SEEN, 'true');
+            speedTipTimerRef.current = setTimeout(() => setShowSpeedTip(false), SPEED_TIP_DURATION);
+          }, SPEED_TIP_DELAY);
         }
       } else if (sceneType !== 'combat' && prevSceneTypeRef.current === 'combat') {
         // 離開戰鬥（勝利）
         setCombatTransition('exiting');
-        combatTransitionTimerRef.current = setTimeout(() => setCombatTransition(null), 1000);
+        combatTransitionTimerRef.current = setTimeout(() => setCombatTransition(null), COMBAT_TRANSITION_DURATION);
 
         // 觸發勝利慶祝動畫和音效
         setShowVictoryCelebration(true);
-        victoryCelebrationTimerRef.current = setTimeout(() => setShowVictoryCelebration(false), 1500);
+        victoryCelebrationTimerRef.current = setTimeout(() => setShowVictoryCelebration(false), VICTORY_CELEBRATION_DURATION);
         playSound('victory');
       }
       prevSceneTypeRef.current = sceneType;
@@ -185,32 +210,6 @@ export default function GamePage() {
       if (victoryCelebrationTimerRef.current) clearTimeout(victoryCelebrationTimerRef.current);
     };
   }, []);
-
-  // 鍵盤快捷鍵（電腦版數字鍵 1-9 選擇選項）
-  useEffect(() => {
-    // 只在有選項且不在載入/閱讀狀態時啟用
-    if (isLoading || isReading || availableActions.length === 0) return;
-
-    const handleKeyPress = (e: KeyboardEvent) => {
-      // 忽略在輸入框內的按鍵
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
-        return;
-      }
-
-      // 數字鍵 1-9
-      const num = parseInt(e.key);
-      if (num >= 1 && num <= 9) {
-        const index = num - 1;
-        if (index < availableActions.length) {
-          e.preventDefault();
-          handleAction(availableActions[index]);
-        }
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyPress);
-    return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [availableActions, isLoading, isReading]);
 
   // Redirect if no active game
   useEffect(() => {
@@ -260,7 +259,6 @@ export default function GamePage() {
   }, [typingEntry, pendingEntries]);
 
   // 打字效果
-  const typingSpeed = 15; // ms per character
   const fullText = typingEntry ? typingEntry.content.join('\n') : '';
 
   useEffect(() => {
@@ -269,13 +267,13 @@ export default function GamePage() {
     if (typingCharIndex < fullText.length) {
       const timer = setTimeout(() => {
         setTypingCharIndex(prev => prev + 1);
-      }, typingSpeed);
+      }, TYPING_SPEED);
       return () => clearTimeout(timer);
     } else {
-      // 打字完成，將 entry 加入 combatLog（限制最多 100 條）
+      // 打字完成，將 entry 加入 combatLog
       setCombatLog(prev => {
         const updated = [...prev, typingEntry];
-        return updated.length > 100 ? updated.slice(-100) : updated;
+        return updated.length > COMBAT_LOG_MAX_LENGTH ? updated.slice(-COMBAT_LOG_MAX_LENGTH) : updated;
       });
       setTypingEntry(null);
       setTypingCharIndex(0);
@@ -339,10 +337,10 @@ export default function GamePage() {
     navigate('/');
   };
 
-  const handleAction = async (action: { id: string; type: string; label: string; data?: Record<string, unknown> }) => {
+  const handleAction = useCallback(async (action: { id: string; type: string; label: string; data?: Record<string, unknown> }) => {
     // 觸覺反饋（手機版）
     if (navigator.vibrate) {
-      navigator.vibrate(50);
+      navigator.vibrate(VIBRATE_DURATION);
     }
 
     try {
@@ -360,7 +358,7 @@ export default function GamePage() {
       if (action.type === 'attack' && response.dice_result?.result === 'success') {
         if (enemyHitTimerRef.current) clearTimeout(enemyHitTimerRef.current);
         setEnemyHit(true);
-        enemyHitTimerRef.current = setTimeout(() => setEnemyHit(false), 500);
+        enemyHitTimerRef.current = setTimeout(() => setEnemyHit(false), HIT_EFFECT_DURATION);
       }
       // 玩家受擊特效（HP 減少時）
       const newPlayerHp = response.state_changes?.player_hp;
@@ -369,7 +367,7 @@ export default function GamePage() {
           newPlayerHp < gameState.player.hp) {
         if (playerHitTimerRef.current) clearTimeout(playerHitTimerRef.current);
         setPlayerHit(true);
-        playerHitTimerRef.current = setTimeout(() => setPlayerHit(false), 500);
+        playerHitTimerRef.current = setTimeout(() => setPlayerHit(false), HIT_EFFECT_DURATION);
       }
       // 檢查 Game Over
       if (typeof newPlayerHp === 'number' && newPlayerHp <= 0) {
@@ -378,7 +376,33 @@ export default function GamePage() {
     } catch (error) {
       console.error('Action failed:', error);
     }
-  };
+  }, [gameState, sendAction]);
+
+  // 鍵盤快捷鍵（電腦版數字鍵 1-9 選擇選項）
+  useEffect(() => {
+    // 只在有選項且不在載入/閱讀狀態時啟用
+    if (isLoading || isReading || availableActions.length === 0) return;
+
+    const handleKeyPress = (e: KeyboardEvent) => {
+      // 忽略在輸入框內的按鍵
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+
+      // 數字鍵 1-9
+      const num = parseInt(e.key);
+      if (num >= 1 && num <= 9) {
+        const index = num - 1;
+        if (index < availableActions.length) {
+          e.preventDefault();
+          handleAction(availableActions[index]);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [availableActions, isLoading, isReading, handleAction]);
 
   // Show loading or redirect if no slot
   if (!currentSlot) {
@@ -387,7 +411,7 @@ export default function GamePage() {
 
   const inCombat = sceneType === 'combat' && combatInfo;
   const isLowHp = gameState?.player
-    ? gameState.player.hp / gameState.player.max_hp <= 0.3
+    ? gameState.player.hp / gameState.player.max_hp <= LOW_HP_THRESHOLD
     : false;
 
   return (
@@ -606,7 +630,7 @@ export default function GamePage() {
               ) : isReading && pendingNarrative.length > 0 ? (
                 <Typewriter
                   texts={pendingNarrative}
-                  speed={50}
+                  speed={NARRATIVE_TYPING_SPEED}
                   onComplete={handleReadingComplete}
                 />
               ) : !inCombat && availableActions.length === 0 && narrative.length > 0 ? (
@@ -965,7 +989,7 @@ export default function GamePage() {
           {isLoading ? (
             <Spinner size="sm" />
           ) : isReading && pendingNarrative.length > 0 ? (
-            <Typewriter texts={pendingNarrative} speed={50} onComplete={handleReadingComplete} />
+            <Typewriter texts={pendingNarrative} speed={NARRATIVE_TYPING_SPEED} onComplete={handleReadingComplete} />
           ) : !inCombat && narrative.length === 0 ? (
             <p className="text-gray-500 text-center text-sm">冒險即將開始...</p>
           ) : (
@@ -1120,25 +1144,19 @@ export default function GamePage() {
       {/* Victory Celebration Animation */}
       {showVictoryCelebration && (
         <div className="victory-celebration">
-          {Array.from({ length: 12 }, (_, i) => {
-            const angle = (i / 12) * 2 * Math.PI;
-            const distance = 150 + Math.random() * 100;
-            const tx = Math.cos(angle) * distance;
-            const ty = Math.sin(angle) * distance;
-            return (
-              <div
-                key={i}
-                className="coin"
-                style={{
-                  '--tx': `${tx}px`,
-                  '--ty': `${ty}px`,
-                  animationDelay: `${i * 0.05}s`
-                } as React.CSSProperties}
-              >
-                💰
-              </div>
-            );
-          })}
+          {coinPositions.map((pos, i) => (
+            <div
+              key={i}
+              className="coin"
+              style={{
+                '--tx': `${pos.tx}px`,
+                '--ty': `${pos.ty}px`,
+                animationDelay: `${pos.delay}s`
+              } as React.CSSProperties}
+            >
+              💰
+            </div>
+          ))}
         </div>
       )}
 

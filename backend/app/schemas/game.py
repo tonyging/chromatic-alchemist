@@ -43,8 +43,8 @@ class CombatState(BaseModel):
     enemy_hp: int
     enemy_max_hp: int
     turn: int
-    player_buffs: list[dict[str, Any]]
-    enemy_buffs: list[dict[str, Any]]
+    player_buffs: list[dict[str, Any]] = []
+    enemy_buffs: list[dict[str, Any]] = []
 
 
 class GameStateSchema(BaseModel):

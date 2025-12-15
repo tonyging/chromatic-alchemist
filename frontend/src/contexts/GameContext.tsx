@@ -208,7 +208,10 @@ export function GameProvider({ children }: { children: ReactNode }) {
       throw new Error('No active game');
     }
 
-    const response = await gameApi.sendAction(state.currentSlot, action);
+    dispatch({ type: 'SET_LOADING', payload: true });
+
+    try {
+      const response = await gameApi.sendAction(state.currentSlot, action);
 
     if (response.narrative) {
       dispatch({ type: 'APPEND_NARRATIVE', payload: response.narrative });
@@ -255,7 +258,12 @@ export function GameProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    return response;
+      dispatch({ type: 'SET_LOADING', payload: false });
+      return response;
+    } catch (error) {
+      dispatch({ type: 'SET_LOADING', payload: false });
+      throw error;
+    }
   };
 
   const exitGame = () => {

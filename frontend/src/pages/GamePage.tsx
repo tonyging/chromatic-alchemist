@@ -9,7 +9,10 @@ import TypingLogEntry from '../components/TypingLogEntry';
 import BottomSheet from '../components/BottomSheet';
 import Spinner from '../components/Spinner';
 import Tooltip from '../components/Tooltip';
-import { isNarrativeText, getWeaknessColorClass, getWeaknessIndicator } from '../utils/combat';
+import PlayerStatsCard from '../components/PlayerStatsCard';
+import EnemyInfoCard from '../components/EnemyInfoCard';
+import ActionButtonList from '../components/ActionButtonList';
+import { isNarrativeText } from '../utils/combat';
 import { playSound } from '../utils/sound';
 import { groupInventoryByType } from '../utils/inventory';
 import type { DiceResult } from '../types';
@@ -379,142 +382,28 @@ export default function GamePage() {
         {/* 左側面板（延伸到底） */}
         <aside className="w-56 lg:w-64 bg-gray-800 flex flex-col shrink-0 border-r border-gray-700">
           {/* 左上：敵人資訊（戰鬥時顯示） */}
-          <div className="p-3 lg:p-4 border-b border-gray-700 min-h-[160px]">
-            {inCombat ? (
-              <div className={`border rounded-lg p-2 lg:p-3 transition-all duration-300 ${
-                enemyHit
-                  ? 'bg-red-600/70 border-red-400 scale-105 shadow-lg shadow-red-500/50 animate-hit-shake'
-                  : combatInfo.enemy_hp <= 0
-                    ? 'bg-gray-800/30 border-gray-600'
-                    : 'bg-red-900/30 border-red-700 shadow-lg'
-              }`}>
-                <h3 className={`font-bold text-sm lg:text-base mb-2 ${combatInfo.enemy_hp <= 0 ? 'text-gray-500 line-through' : 'text-red-400'}`}>
-                  {combatInfo.enemy_name}
-                </h3>
-                {/* HP 條（敵人死亡後隱藏） */}
-                {combatInfo.enemy_hp > 0 && (
-                  <div className="mb-2">
-                    <div className="flex justify-between text-xs text-gray-400 mb-1">
-                      <span>HP</span>
-                      <span>{combatInfo.enemy_hp}/{combatInfo.enemy_max_hp}</span>
-                    </div>
-                    <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-red-500 transition-all duration-500"
-                        style={{ width: `${(combatInfo.enemy_hp / combatInfo.enemy_max_hp) * 100}%` }}
-                      />
-                    </div>
-                  </div>
-                )}
-                {/* 敵人能力（死亡後隱藏） */}
-                {combatInfo.enemy_hp > 0 && (
-                  <div className="text-xs space-y-1">
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">迴避</span>
-                      <span className="text-gray-300">{combatInfo.enemy_evasion}%</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-500">弱點</span>
-                      <span className={`flex items-center gap-1 ${getWeaknessColorClass(combatInfo.enemy_weakness)}`}>
-                        <span>{getWeaknessIndicator(combatInfo.enemy_weakness)}</span>
-                        <span>{combatInfo.enemy_weakness}</span>
-                      </span>
-                    </div>
-                  </div>
-                )}
-              </div>
-            ) : (
+          {inCombat ? (
+            <EnemyInfoCard combatInfo={combatInfo} enemyHit={enemyHit} />
+          ) : (
+            <div className="p-3 lg:p-4 border-b border-gray-700 min-h-[160px]">
               <div className="text-gray-600 text-sm text-center py-6">
                 — 無敵人 —
               </div>
-            )}
-          </div>
+            </div>
+          )}
 
           {/* 左下：角色狀態 */}
-          <div className={`flex-1 p-3 lg:p-4 flex flex-col transition-all duration-300
-            ${isLowHp ? 'border-l-4 border-red-500 animate-pulse' : ''}
-            ${playerHit ? 'bg-red-900/50 animate-hit-shake' : ''}`}>
-            {gameState?.player ? (
-              <>
-                <h2 className={`text-base lg:text-lg font-bold mb-2 transition-colors ${
-                  playerHit ? 'text-red-400' : 'text-amber-400'
-                }`}>
-                  {gameState.player.name}
-                </h2>
-
-                {/* HP/MP Bars */}
-                <div className="space-y-2 mb-3">
-                  <div>
-                    <div className={`flex justify-between text-xs mb-1 ${
-                      isLowHp ? 'text-red-400' : 'text-gray-400'
-                    }`}>
-                      <span>HP</span>
-                      <span>{gameState.player.hp}/{gameState.player.max_hp}</span>
-                    </div>
-                    <div className={`h-2 bg-gray-700 rounded-full overflow-hidden ${
-                      playerHit ? 'animate-pulse' : ''
-                    }`}>
-                      <div
-                        className={`h-full transition-all duration-300 ${
-                          isLowHp ? 'bg-red-600 animate-pulse' : 'bg-red-500'
-                        }`}
-                        style={{ width: `${(gameState.player.hp / gameState.player.max_hp) * 100}%` }}
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <div className="flex justify-between text-xs text-gray-400 mb-1">
-                      <span>MP</span>
-                      <span>{gameState.player.mp}/{gameState.player.max_mp}</span>
-                    </div>
-                    <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-blue-500 transition-all duration-300"
-                        style={{ width: `${(gameState.player.mp / gameState.player.max_mp) * 100}%` }}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Stats */}
-                <div className="grid grid-cols-2 gap-1 text-xs mb-2">
-                  <div className="bg-gray-700/50 p-1.5 rounded">
-                    <span className="text-gray-400">力</span>
-                    <span className="float-right">{gameState.player.stats.strength}</span>
-                  </div>
-                  <div className="bg-gray-700/50 p-1.5 rounded">
-                    <span className="text-gray-400">敏</span>
-                    <span className="float-right">{gameState.player.stats.dexterity}</span>
-                  </div>
-                  <div className="bg-gray-700/50 p-1.5 rounded">
-                    <span className="text-gray-400">智</span>
-                    <span className="float-right">{gameState.player.stats.intelligence}</span>
-                  </div>
-                  <div className="bg-gray-700/50 p-1.5 rounded">
-                    <span className="text-gray-400">感</span>
-                    <span className="float-right">{gameState.player.stats.perception}</span>
-                  </div>
-                </div>
-
-                {/* Gold */}
-                <div className="bg-amber-900/30 p-1.5 rounded text-center text-sm">
-                  <span className="text-amber-400">{gameState.player.gold} G</span>
-                </div>
-              </>
-            ) : (
+          {gameState?.player ? (
+            <PlayerStatsCard
+              player={gameState.player}
+              playerHit={playerHit}
+              onExit={handleExit}
+            />
+          ) : (
+            <div className="flex-1 p-3 lg:p-4 flex flex-col">
               <div className="text-gray-500 text-center py-4">載入中...</div>
-            )}
-
-            {/* Exit Button */}
-            <button
-              onClick={handleExit}
-              className="mt-auto py-2 bg-gray-700 hover:bg-gray-600 rounded text-gray-300 text-sm
-                         focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900
-                         transition-all"
-            >
-              離開遊戲
-            </button>
-          </div>
+            </div>
+          )}
         </aside>
 
         {/* 中間主視覺區：累積訊息 + 底部對話框 */}
@@ -660,30 +549,13 @@ export default function GamePage() {
           )}
 
           {/* 選項區（右側下方） */}
-          {!isReading && availableActions.length > 0 && (
-            <div className="p-3 border-t border-gray-700 bg-gray-800/80">
-              <div className="space-y-1.5">
-                {availableActions.map((action, index) => (
-                  <button
-                    key={action.id}
-                    onClick={() => handleAction(action)}
-                    disabled={isLoading}
-                    className={`w-full py-2 px-3 rounded-lg transition-all text-xs flex items-center justify-between
-                      ${inCombat
-                        ? 'bg-red-900/50 hover:bg-red-800/60 border border-red-700 hover:border-red-500'
-                        : 'bg-gray-700 hover:bg-gray-600 border border-gray-600 hover:border-amber-500'}
-                      focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-800
-                      disabled:opacity-50`}
-                    aria-label={`選項 ${index + 1}: ${action.label}`}
-                  >
-                    <span className="text-gray-100">{action.label}</span>
-                    {index < 9 && (
-                      <span className="text-gray-500 text-[10px] ml-2 shrink-0">[{index + 1}]</span>
-                    )}
-                  </button>
-                ))}
-              </div>
-            </div>
+          {!isReading && (
+            <ActionButtonList
+              actions={availableActions}
+              onAction={handleAction}
+              isLoading={isLoading}
+              inCombat={!!inCombat}
+            />
           )}
         </aside>
       </div>
@@ -807,40 +679,7 @@ export default function GamePage() {
 
         {/* 敵人狀態（戰鬥時獨立一列） */}
         {inCombat && (
-          <div className={`bg-gray-800 px-2 py-1.5 border-b border-gray-700 transition-all duration-300 ${
-            enemyHit ? 'bg-red-600/60 animate-hit-shake' : ''
-          }`}>
-            <div className="flex items-center justify-between mb-1">
-              <span className={`text-sm font-bold ${combatInfo.enemy_hp <= 0 ? 'text-gray-500 line-through' : 'text-red-400'}`}>
-                {combatInfo.enemy_name}
-              </span>
-              {/* 敵人能力（死亡後隱藏） */}
-              {combatInfo.enemy_hp > 0 && (
-                <div className="flex items-center gap-2 text-xs">
-                  <span className="text-gray-500">迴避 {combatInfo.enemy_evasion}%</span>
-                  <span className={`flex items-center gap-1 ${getWeaknessColorClass(combatInfo.enemy_weakness)}`}>
-                    <span>{getWeaknessIndicator(combatInfo.enemy_weakness)}</span>
-                    <span>弱點: {combatInfo.enemy_weakness}</span>
-                  </span>
-                </div>
-              )}
-            </div>
-            {/* HP 條（敵人死亡後隱藏） */}
-            {combatInfo.enemy_hp > 0 && (
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-500 w-6">HP</span>
-                <div className="flex-1 h-3 bg-gray-700 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-red-500 transition-all duration-300"
-                    style={{ width: `${(combatInfo.enemy_hp / combatInfo.enemy_max_hp) * 100}%` }}
-                  />
-                </div>
-                <span className="text-xs text-gray-400 w-12 text-right">
-                  {combatInfo.enemy_hp}/{combatInfo.enemy_max_hp}
-                </span>
-              </div>
-            )}
-          </div>
+          <EnemyInfoCard combatInfo={combatInfo} enemyHit={enemyHit} compact />
         )}
 
         {/* 手機版教學提示 */}
@@ -893,27 +732,14 @@ export default function GamePage() {
         </div>
 
         {/* 選項按鈕（手機版 - 垂直排列） */}
-        {!isReading && availableActions.length > 0 && (
-          <div className="bg-gray-800 border-t border-gray-700 p-2">
-            <div className="flex flex-col gap-1.5">
-              {availableActions.map((action, index) => (
-                <button
-                  key={action.id}
-                  onClick={() => handleAction(action)}
-                  disabled={isLoading}
-                  className={`w-full py-2.5 px-3 rounded-lg transition-all text-sm
-                    ${inCombat
-                      ? 'bg-red-900/50 border border-red-700 active:bg-red-800/60'
-                      : 'bg-gray-700 border border-gray-600 active:bg-gray-600'}
-                    focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-800
-                    disabled:opacity-50`}
-                  aria-label={`選項 ${index + 1}: ${action.label}`}
-                >
-                  <span className="text-gray-100">{action.label}</span>
-                </button>
-              ))}
-            </div>
-          </div>
+        {!isReading && (
+          <ActionButtonList
+            actions={availableActions}
+            onAction={handleAction}
+            isLoading={isLoading}
+            inCombat={!!inCombat}
+            compact
+          />
         )}
 
         {/* 底部對話框（手機版 - 固定高度防止跳動） */}

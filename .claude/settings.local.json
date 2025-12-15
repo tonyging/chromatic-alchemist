@@ -15,7 +15,9 @@
       "Bash(python:*)",
       "Bash(npx tsc:*)",
       "Bash(git restore:*)",
-      "Skill(frontend-design)"
+      "Skill(frontend-design)",
+      "Bash(npm run type-check:*)",
+      "Bash(npm run build:*)"
     ]
   }
 }

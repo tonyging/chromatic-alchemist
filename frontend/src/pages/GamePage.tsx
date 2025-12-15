@@ -108,28 +108,32 @@ export default function GamePage() {
         clearTimeout(combatTransitionTimerRef.current);
       }
       if (sceneType === 'combat' && prevSceneTypeRef.current !== 'combat') {
-        // 進入戰鬥
-        setCombatTransition('entering');
-        combatTransitionTimerRef.current = setTimeout(() => setCombatTransition(null), COMBAT_TRANSITION_DURATION);
+        // 進入戰鬥（延遲到下一個 tick 避免同步 setState）
+        queueMicrotask(() => {
+          setCombatTransition('entering');
+          combatTransitionTimerRef.current = setTimeout(() => setCombatTransition(null), COMBAT_TRANSITION_DURATION);
 
-        // 首次戰鬥顯示加速提示（手機版）
-        const hasSeenTip = localStorage.getItem(STORAGE_KEY_COMBAT_TIP_SEEN);
-        if (!hasSeenTip) {
-          setTimeout(() => {
-            setShowSpeedTip(true);
-            localStorage.setItem(STORAGE_KEY_COMBAT_TIP_SEEN, 'true');
-            speedTipTimerRef.current = setTimeout(() => setShowSpeedTip(false), SPEED_TIP_DURATION);
-          }, SPEED_TIP_DELAY);
-        }
+          // 首次戰鬥顯示加速提示（手機版）
+          const hasSeenTip = localStorage.getItem(STORAGE_KEY_COMBAT_TIP_SEEN);
+          if (!hasSeenTip) {
+            setTimeout(() => {
+              setShowSpeedTip(true);
+              localStorage.setItem(STORAGE_KEY_COMBAT_TIP_SEEN, 'true');
+              speedTipTimerRef.current = setTimeout(() => setShowSpeedTip(false), SPEED_TIP_DURATION);
+            }, SPEED_TIP_DELAY);
+          }
+        });
       } else if (sceneType !== 'combat' && prevSceneTypeRef.current === 'combat') {
-        // 離開戰鬥（勝利）
-        setCombatTransition('exiting');
-        combatTransitionTimerRef.current = setTimeout(() => setCombatTransition(null), COMBAT_TRANSITION_DURATION);
+        // 離開戰鬥（勝利）（延遲到下一個 tick 避免同步 setState）
+        queueMicrotask(() => {
+          setCombatTransition('exiting');
+          combatTransitionTimerRef.current = setTimeout(() => setCombatTransition(null), COMBAT_TRANSITION_DURATION);
 
-        // 觸發勝利慶祝動畫和音效
-        setShowVictoryCelebration(true);
-        victoryCelebrationTimerRef.current = setTimeout(() => setShowVictoryCelebration(false), VICTORY_CELEBRATION_DURATION);
-        playSound('victory', isSoundEnabled);
+          // 觸發勝利慶祝動畫和音效
+          setShowVictoryCelebration(true);
+          victoryCelebrationTimerRef.current = setTimeout(() => setShowVictoryCelebration(false), VICTORY_CELEBRATION_DURATION);
+          playSound('victory', isSoundEnabled);
+        });
       }
       prevSceneTypeRef.current = sceneType;
     }
@@ -186,10 +190,13 @@ export default function GamePage() {
   // 處理打字佇列：當沒有正在打字的 entry 時，從佇列取出下一個
   useEffect(() => {
     if (!typingEntry && pendingEntries.length > 0) {
-      const [next, ...rest] = pendingEntries;
-      setTypingEntry(next);
-      setTypingCharIndex(0);
-      setPendingEntries(rest);
+      // 延遲到下一個 tick 避免同步 setState
+      queueMicrotask(() => {
+        const [next, ...rest] = pendingEntries;
+        setTypingEntry(next);
+        setTypingCharIndex(0);
+        setPendingEntries(rest);
+      });
     }
   }, [typingEntry, pendingEntries]);
 
@@ -205,13 +212,15 @@ export default function GamePage() {
       }, TYPING_SPEED);
       return () => clearTimeout(timer);
     } else {
-      // 打字完成，將 entry 加入 combatLog
-      setCombatLog(prev => {
-        const updated = [...prev, typingEntry];
-        return updated.length > COMBAT_LOG_MAX_LENGTH ? updated.slice(-COMBAT_LOG_MAX_LENGTH) : updated;
+      // 打字完成，將 entry 加入 combatLog（延遲到下一個 tick 避免同步 setState）
+      queueMicrotask(() => {
+        setCombatLog(prev => {
+          const updated = [...prev, typingEntry];
+          return updated.length > COMBAT_LOG_MAX_LENGTH ? updated.slice(-COMBAT_LOG_MAX_LENGTH) : updated;
+        });
+        setTypingEntry(null);
+        setTypingCharIndex(0);
       });
-      setTypingEntry(null);
-      setTypingCharIndex(0);
     }
   }, [typingEntry, typingCharIndex, fullText]);
 

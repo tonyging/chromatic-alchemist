@@ -10,7 +10,9 @@ import BottomSheet from '../components/BottomSheet';
 import Spinner from '../components/Spinner';
 import Tooltip from '../components/Tooltip';
 import { isNarrativeText, getWeaknessColorClass, getWeaknessIndicator } from '../utils/combat';
-import type { DiceResult, InventoryItem } from '../types';
+import { playSound } from '../utils/sound';
+import { groupInventoryByType } from '../utils/inventory';
+import type { DiceResult } from '../types';
 import {
   TYPING_SPEED,
   NARRATIVE_TYPING_SPEED,
@@ -95,76 +97,6 @@ export default function GamePage() {
     });
   };
 
-  // 播放音效（用 Web Audio API 生成音調）
-  const playSound = (type: 'attack' | 'hit' | 'critical' | 'victory') => {
-    if (!isSoundEnabled) return;
-
-    try {
-      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-      const oscillator = audioContext.createOscillator();
-      const gainNode = audioContext.createGain();
-
-      oscillator.connect(gainNode);
-      gainNode.connect(audioContext.destination);
-
-      // 根據音效類型設定頻率和持續時間
-      switch (type) {
-        case 'attack':
-          oscillator.frequency.value = 440; // A4
-          gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
-          gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
-          oscillator.stop(audioContext.currentTime + 0.1);
-          break;
-        case 'hit':
-          oscillator.frequency.value = 220; // A3
-          gainNode.gain.setValueAtTime(0.15, audioContext.currentTime);
-          gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.15);
-          oscillator.stop(audioContext.currentTime + 0.15);
-          break;
-        case 'critical':
-          oscillator.frequency.value = 880; // A5
-          gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
-          gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
-          oscillator.stop(audioContext.currentTime + 0.3);
-          break;
-        case 'victory':
-          oscillator.frequency.value = 523.25; // C5
-          gainNode.gain.setValueAtTime(0.15, audioContext.currentTime);
-          gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
-          oscillator.stop(audioContext.currentTime + 0.5);
-          break;
-      }
-
-      oscillator.start();
-    } catch (error) {
-      console.error('音效播放失敗:', error);
-    }
-  };
-
-  // 物品分組函數（電腦版物品欄用）
-  const groupInventoryByType = (inventory: InventoryItem[]) => {
-    const groups = {
-      potion: [] as InventoryItem[],
-      equipment: [] as InventoryItem[],
-      material: [] as InventoryItem[],
-      other: [] as InventoryItem[],
-    };
-
-    inventory.forEach((item) => {
-      if (item.type === 'consumable' || item.type === 'potion') {
-        groups.potion.push(item);
-      } else if (item.type === 'weapon' || item.type === 'armor' || item.type === 'accessory') {
-        groups.equipment.push(item);
-      } else if (item.type === 'material') {
-        groups.material.push(item);
-      } else {
-        groups.other.push(item);
-      }
-    });
-
-    return groups;
-  };
-
   // 偵測場景類型變化，觸發過渡動畫
   useEffect(() => {
     if (prevSceneTypeRef.current !== sceneType) {
@@ -194,11 +126,11 @@ export default function GamePage() {
         // 觸發勝利慶祝動畫和音效
         setShowVictoryCelebration(true);
         victoryCelebrationTimerRef.current = setTimeout(() => setShowVictoryCelebration(false), VICTORY_CELEBRATION_DURATION);
-        playSound('victory');
+        playSound('victory', isSoundEnabled);
       }
       prevSceneTypeRef.current = sceneType;
     }
-  }, [sceneType]);
+  }, [sceneType, isSoundEnabled]);
 
   // 清理所有 timer（避免記憶體洩漏）
   useEffect(() => {
